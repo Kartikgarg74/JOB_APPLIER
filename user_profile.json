@@ -1,0 +1,33 @@
+{
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "123-456-7890",
+    "skills": [
+        "Python",
+        "Django",
+        "PostgreSQL",
+        "AWS",
+        "Machine Learning",
+        "SQL",
+        "Statistics",
+        "JavaScript",
+        "React",
+        "HTML",
+        "CSS",
+        "Azure",
+        "Docker",
+        "Kubernetes",
+        "CI/CD"
+    ],
+    "experience_years": 4,
+    "education": [
+        "B.S. Computer Science",
+        "M.S. Data Science"
+    ],
+    "preferences": {
+        "location": "Remote",
+        "remote": true,
+        "company_size": "medium",
+        "industry": "Software Development"
+    }
+}

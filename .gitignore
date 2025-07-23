@@ -1,0 +1,13 @@
+/node_modules
+/packages/agents/application_automation/node_modules
+/packages/agents/ats_scorer/node_modules
+client_secrets.json
+encryption.key
+applications.db
+*.lock
+*.db
+/apps/job_applier_agent/encryption.key
+/apps/job_applier_agent/client_secrets.json
+*/__pycache__
+.pytest_cache
+.venv

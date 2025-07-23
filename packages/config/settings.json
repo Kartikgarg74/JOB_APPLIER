@@ -1,0 +1,9 @@
+{
+    "LOG_LEVEL": "INFO",
+    "JOB_SCRAPE_INTERVAL_HOURS": 24,
+    "APPLICATION_TRACKING_DB": "./data/applications.db",
+    "BROWSER_HEADLESS": true,
+    "OUTPUT_DIR": "../../output",
+    "CONFIG_DIR": ".",
+    "USER_PROFILE_PATH": "./user_profile.json"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "job-applier-agent",
+  "version": "1.0.0",
+  "description": "Backend agent for job application automation.",
+  "main": "src/main.py",
+  "scripts": {
+    "test": "export PYTHONPATH=/Users/kartikgarg/Downloads/JOB\\ APPLIER:/Users/kartikgarg/Downloads/JOB\\ APPLIER/apps/job-applier-agent/src && /Users/kartikgarg/Downloads/JOB\\ APPLIER/.venv/bin/pytest",
+    "lint": "../../.venv/bin/black .",
+    "compile-deps": "../../.venv/bin/pip-compile requirements.txt --output-file requirements.lock",
+    "sync-deps": "../../.venv/bin/pip-sync requirements.lock"
+  },
+  "author": "Your Name/Organization",
+  "license": "MIT"
+}

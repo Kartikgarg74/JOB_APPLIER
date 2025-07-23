@@ -1,0 +1,62 @@
+{
+    "name": "John Doe",
+    "email": "0b301e0b5c1d301625060a04192f0700573c0902",
+    "phone": "123-456-7890",
+    "linkedin_profile": "092b02150143705c1214054b1836050e1c3b0f015c3c0b084206005c1e1d091a0d000b",
+    "github_profile": "092b02150143705c020a060d013d4506163249051d370a01020a",
+    "portfolio_url": "https://www.johndoe.com",
+    "resume_path": "/path/to/your/resume.pdf",
+    "cover_letter_template_path": "/path/to/your/cover_letter_template.txt",
+    "skills": [
+        "Python",
+        "JavaScript",
+        "React",
+        "Node.js",
+        "AWS",
+        "Docker",
+        "Kubernetes",
+        "Machine Learning",
+        "Data Analysis"
+    ],
+    "experience": [
+        {
+            "title": "Software Engineer",
+            "company": "Tech Solutions Inc.",
+            "years": "3",
+            "description": "Developed and maintained web applications using Python and React."
+        },
+        {
+            "title": "Junior Developer",
+            "company": "Innovate Corp.",
+            "years": "1",
+            "description": "Assisted in the development of mobile applications."
+        }
+    ],
+    "education": [
+        {
+            "degree": "Master of Science in Computer Science",
+            "university": "State University",
+            "year": "2022"
+        },
+        {
+            "degree": "Bachelor of Science in Software Engineering",
+            "university": "City College",
+            "year": "2020"
+        }
+    ],
+    "preferences": {
+        "job_roles": [
+            "Software Engineer",
+            "Full Stack Developer"
+        ],
+        "job_locations": [
+            "New York, NY",
+            "Remote"
+        ],
+        "salary_range": "$90,000 - $120,000",
+        "job_types": [
+            "Full-time",
+            "Contract"
+        ]
+    }
+}

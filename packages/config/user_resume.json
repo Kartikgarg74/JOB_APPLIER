@@ -1,0 +1,48 @@
+{
+    "name": "Kartik Garg",
+    "email": "gargkartik74@gmail.com",
+    "phone": "+91-9034845195",
+    "linkedin": "https://www.linkedin.com/in/kartik-garg-99a754252/",
+    "github": "https://github.com/Kartikgarg74",
+    "skills": [
+        "Python",
+        "Java",
+        "C++",
+        "SQL",
+        "Project Management",
+        "Data Analysis",
+        "Machine Learning",
+        "AI Engineer",
+        "Problem Solving",
+        "Data Science",
+        "Data Visualization",
+        "Data Engineering",
+        "Data Management"
+    ],
+    "experience": [
+        {
+            "title": "CTO",
+            "company": "Resify",
+            "years": "Jan 2025 - July 2025",
+            "description": "Built and launched Resify, a funded (Rs. 10L) AI-powered academic tool in partnership with a university Rs. 2.5L university tie-up, offering journal classification with (77%accuracy),AI-content detection, plagiarism checks,grammar and formatting correction, and image DPI validation.
+            ◦ Developed and deployed deep learning models and NLP pipelines for PDF analysis and manuscript evaluation using PyTorch, GPT-2, Sentence-BERT,GeminiAPI,HuggingFace, cosine similarity, ensuring scalable MLOps- driven full-stack AI deployment.
+            ◦ Delivered Resify as a live, actively used product adopted by academic users, integrating document parsing, large language models, and metadata-based image analysis to automate comprehensive research paper assessment workflows. "
+        },
+        {
+            "title": "Ml intern",
+            "company": "Defence Research and Development Organisation (D.R.D.O.)",
+            "years": "June 2024 - August 2024",
+            "description": "◦ Formulated Deep Learning System for Encrypted Traffic Classification: Transformed a dataset of 10,845 entries with 29 features into 201 packet block images to analyze traffic patterns; achieved 73% accuracy using an enhanced CNN architecture for encrypted network traffic detection.
+            ◦ Enhanced Model Architecture for Anomaly Detection: Integrated 2 additional convolutional and max-pooling
+            layers to optimise feature extraction and improve detection of anomalies in encrypted network traffic."
+        }
+    ],
+    "education": [
+        {
+            "degree": "B.Tech in Electronics and Communication Engineering",
+            "university": "University School of Information Communication and Technology",
+            "years": "2022 - 2026"
+        }
+    ],
+    "summary": "A B.Tech ECE student, AI innovator, and startup builder with projects like DevMind, Samantha, and Synapse. With 10+ research papers, leadership roles, and deep product thinking, he blends tech, design, and impact seamlessly."
+}

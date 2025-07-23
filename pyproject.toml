@@ -1,0 +1,77 @@
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/( 
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | __pycache__
+  | \.pytest_cache
+  | apps/dashboard
+  | apps/job_applier_agent/client_secret.json
+  | apps/job_applier_agent/encryption.key
+  | packages/database/migrations
+  | 
+  | 
+  | 
+  | 
+  | 
+  | 
+  | 
+  | 
+  | packages/utilities/ats_benchmarks
+  | packages/utilities/browser_automation
+  | packages/utilities/file_management
+  | packages/utilities/parsers
+
+  | packages/utilities/vector_matching
+)
+'''
+
+[tool.flake8]
+max-line-length = 88
+exclude = [".git", "__pycache__", ".venv", ".pytest_cache", "apps/dashboard", "apps/job_applier_agent/client_secret.json", "apps/job_applier_agent/encryption.key", "packages/database/migrations", "packages/agents/application_automation", "packages/agents/ats_scorer", "packages/agents/cover_letter_agent", "packages/agents/job_matcher", "packages/agents/job_processor", "packages/agents/job_scraper", "packages/agents/resume_enhancer", "packages/agents/resume_parser", "packages/utilities/ats_benchmarks", "packages/utilities/browser_automation", "packages/utilities/file_management", "packages/utilities/parsers", "packages/utilities/vector_matching"]
+ignore = ["E203", "W503"] # E203: whitespace before ':', W503: line break before binary operator
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+namespace_packages = true
+
+[tool.mypy.build_packages]
+follow_imports = "normal"
+
+
+
+# Exclude directories that are not meant for type checking or contain external code
+exclude = [
+    "apps/dashboard",
+    "apps/job_applier_agent/client_secret.json",
+    "apps/job_applier_agent/encryption.key",
+    "packages/database/migrations",
+    "packages/agents/application_automation",
+    "packages/agents/ats_scorer",
+    "packages/agents/cover_letter_generator",
+    "packages/agents/job_matcher",
+    "packages/agents/job_processor",
+    "packages/agents/job_scraper",
+    "packages/agents/resume_enhancer",
+    "packages/agents/resume_parser",
+    "packages/utilities/ats_benchmarks",
+    "packages/utilities/browser_automation",
+    "packages/utilities/file_management",
+    "packages/utilities/parsers",
+    "packages/utilities/vector_matching",
+    "celery"
+]

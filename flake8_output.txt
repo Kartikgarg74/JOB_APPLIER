@@ -1,0 +1,250 @@
+./apps/job_applier_agent/src/ats_api.py:9:1: E302 expected 2 blank lines, found 1
+./apps/job_applier_agent/src/profile_api.py:901:21: F821 undefined name 'JobPreferenceUpdate'
+./apps/job_applier_agent/src/tasks.py:5:1: F401 'shutil' imported but unused
+./apps/job_applier_agent/tests/conftest.py:14:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/conftest.py:15:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/conftest.py:16:1: F401 'packages.database.models.User' imported but unused
+./apps/job_applier_agent/tests/conftest.py:16:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_agent_api.py:14:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_agent_api.py:15:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_agent_api.py:16:1: F401 'packages.database.models.User' imported but unused
+./apps/job_applier_agent/tests/test_agent_api.py:16:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_ats_scorer.py:1:1: F401 'pytest' imported but unused
+./apps/job_applier_agent/tests/test_ats_scorer.py:4:1: F401 'io' imported but unused
+./apps/job_applier_agent/tests/test_ats_scorer.py:5:1: F401 'docx.Document' imported but unused
+./apps/job_applier_agent/tests/test_main.py:13:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_main.py:14:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_main.py:15:1: F401 'packages.database.config.engine' imported but unused
+./apps/job_applier_agent/tests/test_main.py:15:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_main.py:17:1: F401 'packages.database.models.User' imported but unused
+./apps/job_applier_agent/tests/test_main.py:17:1: F401 'packages.database.models.Education' imported but unused
+./apps/job_applier_agent/tests/test_main.py:17:1: F401 'packages.database.models.Experience' imported but unused
+./apps/job_applier_agent/tests/test_main.py:17:1: F401 'packages.database.models.Project' imported but unused
+./apps/job_applier_agent/tests/test_main.py:17:1: F401 'packages.database.models.JobPreference' imported but unused
+./apps/job_applier_agent/tests/test_main.py:17:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_user_api.py:14:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_user_api.py:15:1: E402 module level import not at top of file
+./apps/job_applier_agent/tests/test_user_api.py:16:1: E402 module level import not at top of file
+./node_modules/flatted/python/flatted.py:91:9: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_agent.py:2:1: F811 redefinition of unused 'logging' from line 1
+./packages/agents/application_automation/application_automation_agent.py:88:9: F841 local variable 'user_data' is assigned to but never used
+./packages/agents/application_automation/application_automation_agent.py:121:9: F841 local variable 'user_data' is assigned to but never used
+./packages/agents/application_automation/application_automation_agent.py:162:17: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_agent.py:166:17: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_agent.py:172:17: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_agent.py:178:17: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_agent.py:185:17: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_agent.py:190:17: E722 do not use bare 'except'
+./packages/agents/application_automation/application_automation_utils.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/application_automation/application_automation_utils.py:9:31: W292 no newline at end of file
+./packages/agents/application_automation/tests/test_application_automation_agent.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/application_automation/tests/test_application_automation_agent.py:8:1: E302 expected 2 blank lines, found 1
+./packages/agents/application_automation/tests/test_application_automation_agent.py:16:1: E302 expected 2 blank lines, found 1
+./packages/agents/application_automation/tests/test_application_automation_agent.py:20:1: E302 expected 2 blank lines, found 1
+./packages/agents/application_automation/tests/test_application_automation_agent.py:24:1: E302 expected 2 blank lines, found 1
+./packages/agents/application_automation/tests/test_application_automation_agent.py:26:16: W292 no newline at end of file
+./packages/agents/ats_scorer/ats_scorer_agent.py:2:1: F401 'typing.Tuple' imported but unused
+./packages/agents/ats_scorer/ats_scorer_agent.py:21:21: E261 at least two spaces before inline comment
+./packages/agents/ats_scorer/ats_scorer_agent.py:39:51: E261 at least two spaces before inline comment
+./packages/agents/ats_scorer/ats_scorer_agent.py:209:14: F821 undefined name 'scorer'
+./packages/agents/ats_scorer/ats_scorer_agent.py:209:34: F821 undefined name 'dummy_resume_data'
+./packages/agents/ats_scorer/ats_scorer_agent.py:209:53: F821 undefined name 'dummy_job_description_1'
+./packages/agents/ats_scorer/ats_scorer_agent.py:219:14: F821 undefined name 'scorer'
+./packages/agents/ats_scorer/ats_scorer_agent.py:219:34: F821 undefined name 'dummy_resume_data'
+./packages/agents/ats_scorer/ats_scorer_agent.py:229:14: F821 undefined name 'scorer'
+./packages/agents/ats_scorer/ats_scorer_agent.py:229:34: F821 undefined name 'dummy_resume_data'
+./packages/agents/ats_scorer/ats_utils.py:3:1: F811 redefinition of unused 're' from line 1
+./packages/agents/ats_scorer/tests/test_ats_scorer_agent.py:13:1: E402 module level import not at top of file
+./packages/agents/ats_scorer/tests/test_ats_scorer_agent.py:14:1: E402 module level import not at top of file
+./packages/agents/ats_scorer/tests/test_ats_scorer_agent.py:16:1: E302 expected 2 blank lines, found 1
+./packages/agents/ats_scorer/tests/test_ats_scorer_agent.py:59:1: E305 expected 2 blank lines after class or function definition, found 1
+./packages/agents/ats_scorer/tests/test_ats_scorer_agent.py:60:20: W292 no newline at end of file
+./packages/agents/cover_letter_generator/cover_letter_generator_agent.py:2:1: F811 redefinition of unused 'logging' from line 1
+./packages/agents/cover_letter_generator/cover_letter_utils.py:3:1: E302 expected 2 blank lines, found 1
+./packages/agents/cover_letter_generator/cover_letter_utils.py:43:18: W292 no newline at end of file
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:8:1: E302 expected 2 blank lines, found 1
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:35:1: E302 expected 2 blank lines, found 1
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:44:33: E261 at least two spaces before inline comment
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:46:1: E302 expected 2 blank lines, found 1
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:64:33: E261 at least two spaces before inline comment
+./packages/agents/cover_letter_generator/tests/test_cover_letter_generator_agent.py:64:72: W292 no newline at end of file
+./packages/agents/job_matcher/job_matcher_agent.py:3:1: F811 redefinition of unused 'logging' from line 1
+./packages/agents/job_matcher/job_matcher_utils.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/job_matcher_utils.py:12:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/job_matcher_utils.py:22:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/job_matcher_utils.py:35:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/job_matcher_utils.py:51:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/job_matcher_utils.py:73:46: E261 at least two spaces before inline comment
+./packages/agents/job_matcher/job_matcher_utils.py:79:13: F841 local variable 'min_salary' is assigned to but never used
+./packages/agents/job_matcher/job_matcher_utils.py:80:13: F841 local variable 'max_salary' is assigned to but never used
+./packages/agents/job_matcher/job_matcher_utils.py:101:59: E261 at least two spaces before inline comment
+./packages/agents/job_matcher/job_matcher_utils.py:103:17: E261 at least two spaces before inline comment
+./packages/agents/job_matcher/job_matcher_utils.py:108:60: E261 at least two spaces before inline comment
+./packages/agents/job_matcher/job_matcher_utils.py:110:55: E261 at least two spaces before inline comment
+./packages/agents/job_matcher/job_matcher_utils.py:114:55: E261 at least two spaces before inline comment
+./packages/agents/job_matcher/job_matcher_utils.py:116:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/job_matcher_utils.py:131:29: W292 no newline at end of file
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:13:1: E402 module level import not at top of file
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:14:1: F401 'packages.common_types.common_types.JobListing' imported but unused
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:14:1: F401 'packages.common_types.common_types.ResumeData' imported but unused
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:14:1: E402 module level import not at top of file
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:16:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:93:1: E305 expected 2 blank lines after class or function definition, found 1
+./packages/agents/job_matcher/tests/test_job_matcher_agent.py:94:20: W292 no newline at end of file
+./packages/agents/job_processor/job_processor_agent.py:2:1: F811 redefinition of unused 'logging' from line 1
+./packages/agents/job_processor/job_processor_agent.py:41:1: E303 too many blank lines (5)
+./packages/agents/job_processor/job_processor_utils.py:1:1: F401 'typing.List' imported but unused
+./packages/agents/job_processor/job_processor_utils.py:3:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_processor/job_processor_utils.py:17:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_processor/job_processor_utils.py:43:24: W292 no newline at end of file
+./packages/agents/job_processor/tests/test_job_processor_agent.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_processor/tests/test_job_processor_agent.py:8:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_processor/tests/test_job_processor_agent.py:23:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_processor/tests/test_job_processor_agent.py:29:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_processor/tests/test_job_processor_agent.py:39:46: W292 no newline at end of file
+./packages/agents/job_scraper/job_scraper_utils.py:3:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_scraper/job_scraper_utils.py:20:25: W292 no newline at end of file
+./packages/agents/job_scraper/tests/test_job_scraper_agent.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_scraper/tests/test_job_scraper_agent.py:8:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_scraper/tests/test_job_scraper_agent.py:15:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_scraper/tests/test_job_scraper_agent.py:19:1: E302 expected 2 blank lines, found 1
+./packages/agents/job_scraper/tests/test_job_scraper_agent.py:21:16: W292 no newline at end of file
+./packages/agents/resume_enhancer/resume_enhancer_agent.py:24:5: E303 too many blank lines (2)
+./packages/agents/resume_enhancer/resume_enhancer_agent.py:51:1: E303 too many blank lines (5)
+./packages/agents/resume_enhancer/resume_enhancer_utils.py:6:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/resume_enhancer_utils.py:21:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/resume_enhancer_utils.py:45:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/resume_enhancer_utils.py:72:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/resume_enhancer_utils.py:80:23: W292 no newline at end of file
+./packages/agents/resume_enhancer/tests/test_resume_enhancer_agent.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/tests/test_resume_enhancer_agent.py:8:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/tests/test_resume_enhancer_agent.py:24:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/tests/test_resume_enhancer_agent.py:31:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_enhancer/tests/test_resume_enhancer_agent.py:42:49: W292 no newline at end of file
+./packages/agents/resume_parser/resume_parser_agent.py:2:1: F811 redefinition of unused 'logging' from line 1
+./packages/agents/resume_parser/resume_parser_agent.py:67:25: E261 at least two spaces before inline comment
+./packages/agents/resume_parser/resume_parser_agent.py:68:25: E261 at least two spaces before inline comment
+./packages/agents/resume_parser/resume_parser_agent.py:74:5: F401 'os' imported but unused
+./packages/agents/resume_parser/resume_parser_agent.py:89:37: E261 at least two spaces before inline comment
+./packages/agents/resume_parser/resume_utils.py:1:1: F401 'typing.Optional' imported but unused
+./packages/agents/resume_parser/resume_utils.py:1:1: F401 'typing.Any' imported but unused
+./packages/agents/resume_parser/resume_utils.py:4:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_parser/resume_utils.py:22:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_parser/resume_utils.py:30:14: W292 no newline at end of file
+./packages/agents/resume_parser/tests/test_resume_parser_agent.py:6:1: F401 'packages.common_types.common_types.ResumeData' imported but unused
+./packages/agents/resume_parser/tests/test_resume_parser_agent.py:12:1: E302 expected 2 blank lines, found 1
+./packages/agents/resume_parser/tests/test_resume_parser_agent.py:84:1: E305 expected 2 blank lines after class or function definition, found 1
+./packages/agents/resume_parser/tests/test_resume_parser_agent.py:85:20: W292 no newline at end of file
+./packages/database/__init__.py:1:1: F401 '.job_data_model.JobDatabase' imported but unused
+./packages/database/__init__.py:1:1: F401 '.job_data_model.JobListing' imported but unused
+./packages/database/__init__.py:3:1: F401 '.models.Base' imported but unused
+./packages/database/__init__.py:3:1: F401 '.models.User' imported but unused
+./packages/database/config.py:4:1: F811 redefinition of unused 'create_engine' from line 1
+./packages/database/migrations/env.py:8:1: E402 module level import not at top of file
+./packages/database/migrations/env.py:10:1: E402 module level import not at top of file
+./packages/database/migrations/env.py:11:1: E402 module level import not at top of file
+./packages/database/migrations/env.py:13:1: E402 module level import not at top of file
+./packages/database/migrations/env.py:26:1: E402 module level import not at top of file
+./packages/database/migrations/env.py:27:1: F401 'packages.database.models.User' imported but unused
+./packages/database/migrations/env.py:27:1: F401 'packages.database.models.Education' imported but unused
+./packages/database/migrations/env.py:27:1: F401 'packages.database.models.Experience' imported but unused
+./packages/database/migrations/env.py:27:1: F401 'packages.database.models.Project' imported but unused
+./packages/database/migrations/env.py:27:1: F401 'packages.database.models.JobPreference' imported but unused
+./packages/database/migrations/env.py:27:1: E402 module level import not at top of file
+./packages/database/migrations/env.py:27:89: E261 at least two spaces before inline comment
+./packages/database/migrations/env.py:36:1: E302 expected 2 blank lines, found 1
+./packages/database/migrations/env.py:59:1: E302 expected 2 blank lines, found 1
+./packages/database/migrations/versions/4b100924591d_initial_migration.py:10:1: F401 'alembic.op' imported but unused
+./packages/database/migrations/versions/4b100924591d_initial_migration.py:11:1: F401 'sqlalchemy as sa' imported but unused
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:4:9: W291 trailing whitespace
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:25:5: E128 continuation line under-indented for visual indent
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:26:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:27:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:28:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:29:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:30:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:31:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:32:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:33:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:34:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:35:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:36:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:37:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:38:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:39:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:42:5: E128 continuation line under-indented for visual indent
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:43:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:44:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:45:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:46:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:47:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:48:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:49:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:50:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:51:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:52:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:53:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:54:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:55:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:56:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:57:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:58:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:59:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:64:5: E128 continuation line under-indented for visual indent
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:65:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:66:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:67:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:68:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:69:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:70:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:71:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:72:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:73:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:76:5: E128 continuation line under-indented for visual indent
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:77:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:78:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:79:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:80:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:81:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:82:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:83:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:84:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:85:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:88:5: E128 continuation line under-indented for visual indent
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:89:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:90:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:91:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:92:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:93:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:94:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:95:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:96:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:97:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:100:5: E128 continuation line under-indented for visual indent
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:101:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:102:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:103:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:104:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:105:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:106:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/7817cb5869b5_add_google_id_and_image_to_user_model.py:107:5: E122 continuation line missing indentation or outdented
+./packages/database/migrations/versions/ce9da821a1d1_add_user_profile_education_experience_.py:10:1: F401 'alembic.op' imported but unused
+./packages/database/migrations/versions/ce9da821a1d1_add_user_profile_education_experience_.py:11:1: F401 'sqlalchemy as sa' imported but unused
+./packages/database/models.py:3:1: F811 redefinition of unused 'Column' from line 1
+./packages/database/models.py:3:1: F811 redefinition of unused 'Integer' from line 1
+./packages/database/models.py:3:1: F811 redefinition of unused 'String' from line 1
+./packages/database/models.py:3:1: F811 redefinition of unused 'DateTime' from line 1
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Skill' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Certification' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Language' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Award' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Publication' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Patent' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.VolunteerExperience' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.Reference' imported but unused
+./packages/database/user_data_model.py:6:1: F401 'packages.database.models.CustomSection' imported but unused
+./packages/database/user_data_model.py:321:31: F821 undefined name 'JobPreference'
+./packages/utilities/__init__.py:1:1: F401 '.retry_utils.retry_with_exponential_backoff' imported but unused
+./packages/utilities/encryption_utils.py:4:1: F811 redefinition of unused 'os' from line 1
+./packages/utilities/file_management/__init__.py:1:1: F401 '.file_operations.FileManagement' imported but unused
