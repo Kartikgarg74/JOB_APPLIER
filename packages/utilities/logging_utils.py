@@ -36,3 +36,7 @@ def setup_logging(log_file: str = "output/centralized.log"):
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
 
 # Call setup_logging() in your main entrypoint (main.py) to activate centralized logging.
+
+def get_logger(name: str = None):
+    """Return a logger instance with the given name (or root if None)."""
+    return logging.getLogger(name)
