@@ -24,6 +24,9 @@ supabase_url = os.getenv("SUPABASE_DB_URL") or config.get_main_option("sqlalchem
 if supabase_url:
     config.set_main_option("sqlalchemy.url", supabase_url)
 
+# Print the DB URL for debugging
+print(f"[Alembic] Using database URL: {supabase_url}")
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 from packages.database.config import Base

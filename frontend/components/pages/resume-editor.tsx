@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +22,9 @@ import {
   Lightbulb,
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { apiRequest } from "@/lib/utils";
+import { useApiServices } from '@/lib/api-context';
+import { UploadResult } from '@/lib/resume';
+import Image from 'next/image';
 
 const resumeSections = [
   { id: "header", title: "Header", required: true },
@@ -89,18 +91,18 @@ export function ResumeEditor() {
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Add state for dynamic sections
-  const [educationEntries, setEducationEntries] = useState<any[]>([]);
-  const [projectsEntries, setProjectsEntries] = useState<any[]>([]);
-  const [certificationsEntries, setCertificationsEntries] = useState<any[]>([]);
-  const [awardsEntries, setAwardsEntries] = useState<any[]>([]);
+  const [educationEntries, setEducationEntries] = useState<string[]>([]);
+  const [projectsEntries, setProjectsEntries] = useState<string[]>([]);
+  const [certificationsEntries, setCertificationsEntries] = useState<string[]>([]);
+  const [awardsEntries, setAwardsEntries] = useState<string[]>([]);
   const [newEntry, setNewEntry] = useState("");
 
   // Analytics hooks
-  const handleOptimize = () => {
+  const handleOptimize = useCallback(() => {
     setIsOptimizing(true)
     console.log("Analytics: Optimize resume")
     setTimeout(() => {
@@ -108,9 +110,11 @@ export function ResumeEditor() {
       setIsOptimizing(false)
       // Confetti animation would trigger here
     }, 2000)
-  }
+  }, []);
 
-  const handleUpload = async () => {
+  const { uploadResume } = useApiServices();
+
+  const handleUpload = useCallback(async () => {
     if (!resumeFile) {
       setError("Please select a resume file to upload.");
       return;
@@ -120,24 +124,18 @@ export function ResumeEditor() {
     setUploadResult(null);
     console.log("Analytics: Resume upload", resumeFile)
     try {
-      const formData = new FormData();
-      formData.append("file", resumeFile);
-      const result = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/v1"}/upload-resume`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!result.ok) {
-        const err = await result.json();
-        throw new Error(err.message || "Failed to upload resume");
-      }
-      const data = await result.json();
+      const data = await uploadResume(resumeFile);
       setUploadResult(data);
-    } catch (e: any) {
-      setError(e.message || "An error occurred");
+    } catch (e) {
+      if (e instanceof Error) {
+        setError(e.message || "An error occurred");
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [resumeFile, uploadResume]);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600"
@@ -152,6 +150,10 @@ export function ResumeEditor() {
     if (score >= 70) return "from-yellow-500 to-orange-500"
     return "from-red-500 to-pink-500"
   }
+
+  const wordCount = useMemo(() => 247, []); // Replace with actual computation if needed
+  const sectionCount = useMemo(() => 6, []); // Replace with actual computation if needed
+  const keywordCount = useMemo(() => 23, []); // Replace with actual computation if needed
 
   return (
     <ErrorBoundary>

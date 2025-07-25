@@ -1,7 +1,6 @@
 import logging
-import logging
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import json
 import datetime
 
@@ -13,13 +12,15 @@ logger = logging.getLogger(__name__)
 
 class ApplicationAutomationAgent:
     """
-    [CONTEXT] Automates the process of applying for jobs on various platforms.
-    [PURPOSE] Fills out application forms and submits resumes/cover letters programmatically.
-    """
+    Automates the process of applying for jobs on various platforms.
 
-    def __init__(self, db):
+    Args:
+        db: Database/session dependency.
+        logger: Logger instance for dependency injection and testability.
+    """
+    def __init__(self, db: Any, logger: Optional[logging.Logger] = None) -> None:
         self.db = db
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logger or logging.getLogger(self.__class__.__name__)
         self.logger.info("ApplicationAutomationAgent initialized.")
 
     def _log_application_attempt(self, job_data: dict, platform: str, result: str):
@@ -52,12 +53,21 @@ class ApplicationAutomationAgent:
 
     @retry(max_retries=3, initial_delay=2, backoff_factor=2)
     def apply_for_job(
-        self, job_data: Dict[str, Any], resume_path: str, cover_letter_path: str
+        self,
+        job_data: Dict[str, Any],
+        resume_path: str,
+        cover_letter_path: str
     ) -> bool:
         """
-        [CONTEXT] Navigates to the job application page and attempts to submit the application.
-        [PURPOSE] Automates the submission of a job application.
-        [TRACKING] Logs every application attempt to application_log.json (timestamp, platform, job, result).
+        Navigates to the job application page and attempts to submit the application.
+
+        Args:
+            job_data: Dictionary containing job details (title, company, url, etc.).
+            resume_path: Path to the resume file to upload.
+            cover_letter_path: Path to the cover letter file to upload.
+
+        Returns:
+            True if the application was submitted successfully, False otherwise.
         """
         self.logger.info(
             f"Attempting to apply for job: {job_data.get('title')} at {job_data.get('company')}"
@@ -85,9 +95,7 @@ class ApplicationAutomationAgent:
             from playwright.sync_api import sync_playwright
 
             with sync_playwright() as p:
-                browser = p.chromium.launch(
-                    headless=True
-                )
+                browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
 
                 self.logger.info(f"Navigating to {job_url}...")
@@ -123,7 +131,7 @@ class ApplicationAutomationAgent:
                 self._log_application_attempt(job_data, platform, "success" if success else "failure")
                 return success
         except Exception as e:
-            self.logger.error(f"An error occurred during web automation: {e}")
+            self.logger.exception(f"An error occurred during web automation: {e}")
             self._log_application_attempt(job_data, platform, f"failure: {e}")
             return False
 

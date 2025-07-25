@@ -30,7 +30,7 @@ This module (`models.py`) defines the SQLAlchemy ORM (Object Relational Mapper) 
   - `linkedin_profile` (String, Nullable)
   - `github_profile` (String, Nullable)
   - `years_of_experience` (Integer, Nullable)
-  - `skills` (Text, Nullable): Note: This field is deprecated in favor of the `Skill` relationship.
+  - `skills`: One-to-many relationship with `Skill` (cascades delete). Represents the user's skills as objects.
 - **Relationships**:
   - `education`: One-to-many with `Education` (cascades delete).
   - `experience`: One-to-many with `Experience` (cascades delete).

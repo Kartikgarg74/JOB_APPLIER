@@ -1,0 +1,45 @@
+// Types for ATS API
+export interface AtsSuggestion {
+  type: 'success' | 'warning' | 'info';
+  title: string;
+  description: string;
+  impact: string;
+}
+
+export interface AtsSkillAnalysis {
+  skill: string;
+  required: boolean;
+  match: number;
+}
+
+export interface AtsResults {
+  score: number;
+  grade: string;
+  skillsMatch: number;
+  keywordsMatch: number;
+  suggestions: AtsSuggestion[];
+  skillsAnalysis: AtsSkillAnalysis[];
+}
+
+// API call for ATS scoring
+export async function fetchAtsScore(
+  resumeFile: File,
+  jobDescription: string
+): Promise<AtsResults> {
+  const formData = new FormData();
+  formData.append("resume_file", resumeFile);
+  formData.append("job_description", jobDescription);
+  const result = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/v1"}/ats-score`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!result.ok) {
+    let errMsg = "Failed to get ATS score";
+    try {
+      const err = await result.json();
+      errMsg = err.message || errMsg;
+    } catch {}
+    throw new Error(errMsg);
+  }
+  return result.json();
+}

@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, List
 import json
 from datetime import datetime
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, Form, Depends, Body
 from fastapi import HTTPException # Keep HTTPException for standard HTTP errors
@@ -41,8 +42,9 @@ from packages.utilities.parsers.resume_parser import extract_text_from_resume
 from fastapi.responses import JSONResponse
 
 # Redis cache setup
-REDIS_URL = getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
-redis_cache = Redis.from_url(REDIS_URL, decode_responses=True)
+REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
+REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
+redis_cache = Redis.from_url(REDIS_URL, password=REDIS_TOKEN, decode_responses=True)
 
 CACHE_TTL = 60  # seconds
 
@@ -59,19 +61,20 @@ async def get_or_set_cache(key: str, fetch_func, ttl: int = CACHE_TTL):
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    redis_instance = Redis.from_url(REDIS_URL, password=REDIS_TOKEN, decode_responses=True)
+    await FastAPILimiter.init(redis_instance)
+    yield  # Startup complete, app runs here
+    # (Optional) Add any cleanup code after yield
+
+app = FastAPI(lifespan=lifespan)
 
 v1_router = FastAPI(prefix="/v1")
 
 v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 
 app.include_router(v1_router)
-
-
-@v1_router.on_event("startup")
-async def startup():
-    redis_instance = Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0, password=settings.REDIS_PASSWORD)
-    await FastAPILimiter.init(redis_instance)
 
 
 # Placeholder for the JobApplierAgent instance

@@ -2,7 +2,8 @@ from celery import Celery
 from kombu import Queue, Exchange
 import os
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
+REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
 
 celery_app = Celery(
     "job_applier",

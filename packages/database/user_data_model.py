@@ -1,7 +1,7 @@
 # packages/database/user_data_model.py
 
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from packages.database.models import (
     User,
@@ -71,8 +71,29 @@ class UserDatabase:
 
 
     def get_user_by_id(self, session: Session, user_id: int) -> Optional[User]:
+        """
+        Retrieve a user by their ID, eagerly loading related objects.
+
+        Args:
+            session: SQLAlchemy session.
+            user_id: User's unique ID.
+        Returns:
+            User object if found, None otherwise.
+        Note:
+            The session should be managed externally (not closed here).
+        """
         try:
-            return session.query(User).filter_by(id=user_id).first()
+            return (
+                session.query(User)
+                .options(
+                    joinedload(User.education),
+                    joinedload(User.experience),
+                    joinedload(User.projects),
+                    joinedload(User.job_preferences),
+                )
+                .filter_by(id=user_id)
+                .first()
+            )
         finally:
             pass
 

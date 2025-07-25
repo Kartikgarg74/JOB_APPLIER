@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,7 +22,9 @@ import {
   MessageSquare,
   Plus,
 } from "lucide-react"
-import { apiRequest } from "@/lib/utils";
+import { useApiServices } from '@/lib/api-context';
+import { Application } from '@/lib/applications';
+import Image from 'next/image';
 
 // ErrorBoundary component
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
@@ -50,19 +52,23 @@ class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void;
 }
 
 export function ApplicationsTracker() {
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobUrl, setJobUrl] = useState("");
 
-  // Fetch applications from backend (placeholder, implement if endpoint exists)
-  useEffect(() => {
-    // Example: fetch applications from /v1/applications (if available)
-    // setLoading(true);
-    // apiRequest<any[]>("/applications").then(setApplications).catch(e => setError(e.message)).finally(() => setLoading(false));
-  }, []);
+  const { fetchApplications, applyForJob } = useApiServices();
 
-  const handleApply = async () => {
+  // Fetch applications from backend
+  useEffect(() => {
+    setLoading(true);
+    fetchApplications()
+      .then(setApplications)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [fetchApplications]);
+
+  const handleApply = useCallback(async () => {
     if (!jobUrl) {
       setError("Please enter a job posting URL.");
       return;
@@ -70,34 +76,36 @@ export function ApplicationsTracker() {
     setLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append("job_posting_url", jobUrl);
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/v1"}/apply-for-job`, {
-        method: "POST",
-        body: formData,
-      });
+      await applyForJob(jobUrl);
       // Optionally refresh applications list here
-    } catch (e: any) {
-      setError(e.message || "An error occurred");
+    } catch (e) {
+      if (e instanceof Error) {
+        setError(e.message || "An error occurred");
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobUrl, applyForJob]);
 
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedApplication, setSelectedApplication] = useState<number | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "timeline">("grid")
 
-  const filteredApplications = applications.filter((app) => {
-    const matchesSearch =
-      app.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.position.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || app.status.toLowerCase() === statusFilter.toLowerCase()
-    return matchesSearch && matchesStatus
-  })
+  const filteredApplications = useMemo(() =>
+    applications.filter((app) => {
+      const matchesSearch =
+        app.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.position.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesStatus = statusFilter === "all" || app.status.toLowerCase() === statusFilter.toLowerCase()
+      return matchesSearch && matchesStatus
+    }),
+    [applications, searchQuery, statusFilter]
+  );
 
-  const getStatusStats = () => {
+  const getStatusStats = useCallback(() => {
     const stats = applications.reduce(
       (acc, app) => {
         acc[app.status] = (acc[app.status] || 0) + 1
@@ -106,9 +114,9 @@ export function ApplicationsTracker() {
       {} as Record<string, number>,
     )
     return stats
-  }
+  }, [applications]);
 
-  const stats = getStatusStats()
+  const stats = useMemo(() => getStatusStats(), [getStatusStats]);
 
   // Restore statusColors and statusIcons for application status display
   const statusColors = {
@@ -164,7 +172,7 @@ export function ApplicationsTracker() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4" aria-busy={loading} aria-label="Loading stats">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4" aria-label="Loading stats">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -175,7 +183,7 @@ export function ApplicationsTracker() {
         {/* Filters */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4" aria-busy={loading} aria-label="Loading filters">
+            <div className="flex flex-col sm:flex-row gap-4" aria-label="Loading filters">
               <Skeleton className="h-10 w-full sm:w-1/2" />
               <Skeleton className="h-10 w-full sm:w-48" />
               <Skeleton className="h-10 w-full sm:w-40" />
@@ -184,7 +192,7 @@ export function ApplicationsTracker() {
         </Card>
 
         {/* Applications List */}
-        <div className="grid gap-4" aria-busy={loading} aria-label="Loading applications">
+        <div className="grid gap-4" aria-label="Loading applications">
           {filteredApplications.map((application) => {
             const StatusIcon = statusIcons[application.status as keyof typeof statusIcons]
             return (
@@ -193,7 +201,7 @@ export function ApplicationsTracker() {
                   <div className="flex flex-col md:flex-row items-start justify-between gap-4 md:gap-0">
                     <div className="flex gap-4 flex-1">
                       <Avatar className="w-12 h-12">
-                        <AvatarImage src={application.logo || "/placeholder.svg"} alt={application.company} />
+                        <Image src={application.logo || "/placeholder.svg"} alt={application.company} width={48} height={48} className="rounded-full object-cover" />
                         <AvatarFallback>
                           <Building2 className="w-6 h-6" />
                         </AvatarFallback>

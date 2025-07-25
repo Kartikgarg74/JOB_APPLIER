@@ -45,9 +45,7 @@ class UserProfileUpdate(BaseModel):
     linkedin_profile: Optional[str] = Field(None, max_length=255)
     github_profile: Optional[str] = Field(None, max_length=255)
     years_of_experience: Optional[int] = Field(None, ge=0, le=100)
-    skills: Optional[str] = Field(
-        None, max_length=1000
-    )  # Consider a List[str] and handle serialization
+    skills: Optional[List[SkillResponse]] = None  # Now a list of SkillResponse objects
     onboarding_complete: Optional[bool] = Field(None, description="Has the user completed onboarding?")
     onboarding_step: Optional[str] = Field(None, description="Current onboarding step or progress.")
     job_preferences: Optional[dict] = Field(None, description="Job preferences for the user.")
@@ -215,7 +213,7 @@ async def get_user_profile(
             linkedin_profile=user.linkedin_profile,
             github_profile=user.github_profile,
             years_of_experience=user.years_of_experience,
-            skills=user.skills,
+            skills=[SkillResponse.from_orm(s) for s in user.skills],
             onboarding_complete=user.onboarding_complete,
             onboarding_step=user.onboarding_step,
         )

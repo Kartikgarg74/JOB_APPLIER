@@ -2,6 +2,75 @@ from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
 from packages.database.user_data_model import UserDatabase
 import difflib
+import hashlib
+import time
+
+try:
+    from sentence_transformers import SentenceTransformer
+    import numpy as np
+    _st_model = SentenceTransformer('all-MiniLM-L6-v2')
+except ImportError:
+    _st_model = None
+    np = None
+
+_embedding_cache = {}
+
+_skill_taxonomy = {
+    "Python": ["Programming", "Scripting"],
+    "JavaScript": ["Programming", "Frontend"],
+    "Django": ["Python", "Web Framework"],
+    "React": ["JavaScript", "Frontend"],
+    "AWS": ["Cloud", "DevOps"],
+    "Docker": ["DevOps"],
+    "Kubernetes": ["DevOps"],
+    # ... add more as needed
+}
+
+_experience_levels = {
+    "intern": 0,
+    "junior": 1,
+    "mid": 2,
+    "senior": 3,
+    "lead": 4,
+    "principal": 5
+}
+
+def normalize_skill(skill: str) -> str:
+    return skill.strip().lower()
+
+def expand_skills(skills: List[str]) -> set:
+    """Expand skills using the taxonomy for hierarchical matching."""
+    expanded = set()
+    for skill in skills:
+        norm = normalize_skill(skill)
+        expanded.add(norm)
+        for parent in _skill_taxonomy.get(skill, []):
+            expanded.add(normalize_skill(parent))
+    return expanded
+
+def get_text_embedding(text: str, max_retries: int = 3) -> Optional[Any]:
+    """Get or compute the embedding for a given text, using cache. Handles rate limits."""
+    if not _st_model or not np:
+        return None
+    key = hashlib.sha256(text.encode('utf-8')).hexdigest()
+    if key in _embedding_cache:
+        return _embedding_cache[key]
+    for attempt in range(max_retries):
+        try:
+            emb = _st_model.encode([text])[0]
+            _embedding_cache[key] = emb
+            return emb
+        except Exception as e:
+            if 'rate limit' in str(e).lower() or 'too many requests' in str(e).lower():
+                time.sleep(2 ** attempt)
+            else:
+                break
+    return None
+
+def cosine_similarity(vec1, vec2) -> float:
+    if not np or vec1 is None or vec2 is None:
+        return 0.0
+    return float(np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2)))
 
 def load_user_profile_data(db: Session) -> Dict[str, Any]:
     """
@@ -178,3 +247,14 @@ def calculate_opportunity_score(job: Dict[str, Any]) -> float:
         if factor in job:
             opportunity_score += job[factor] * weight * 100
     return opportunity_score
+
+def experience_level_to_numeric(level: str) -> int:
+    return _experience_levels.get(level.lower(), -1)
+
+def compare_experience_levels(user_level: str, job_level: str) -> float:
+    """Return 1.0 if user meets or exceeds job level, else a fraction."""
+    user_num = experience_level_to_numeric(user_level)
+    job_num = experience_level_to_numeric(job_level)
+    if user_num == -1 or job_num == -1:
+        return 0.0
+    return 1.0 if user_num >= job_num else user_num / (job_num + 0.01)

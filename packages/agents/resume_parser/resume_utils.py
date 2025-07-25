@@ -7,14 +7,15 @@ from docx import Document
 import os
 from nltk import ne_chunk, pos_tag, word_tokenize
 from nltk.tree import Tree
+from dataclasses import dataclass, field
 
 # Load spaCy model
 try:
-    nlp = spacy.load("en_core_web_lg")
+    nlp = spacy.load("en_core_web_sm")
 except OSError:
     logging.warning("Downloading spaCy model...")
-    os.system("python -m spacy download en_core_web_lg")
-    nlp = spacy.load("en_core_web_lg")
+    os.system("python -m spacy download en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,18 @@ def extract_awards(text: str) -> list:
                 if not re.match(r'^[A-Z][A-Z\s]+:?$', line):
                     awards.append(line)
     return awards
+
+def extract_achievements(text: str) -> list:
+    """Extract achievements from resume text."""
+    achievements = []
+    sections = re.split(r'\n(?=[A-Z][A-Z\s]+:?(?:\n|$))', text)
+    for section in sections:
+        if re.search(r'ACHIEVEMENT|ACHIEVEMENTS', section.upper()):
+            lines = [line.strip() for line in section.split('\n')[1:] if line.strip()]
+            for line in lines:
+                if not re.match(r'^[A-Z][A-Z\s]+:?$', line):
+                    achievements.append(line)
+    return achievements
 
 def extract_personal_details(text: str) -> Dict[str, Optional[str]]:
     """
@@ -494,3 +507,18 @@ def validate_extracted_data(data: Dict[str, Any]) -> bool:
         return False
 
     return True
+
+@dataclass
+class ResumeData:
+    raw_text: str
+    personal_details: Dict[str, Optional[str]]
+    education: List[Dict[str, str]]
+    experience: List[Dict[str, str]]
+    skills: List[str]
+    projects: List[Dict[str, Any]]
+    certifications: List[str]
+    awards: List[str]
+    achievements: List[str]
+    summary: str = ""
+    keywords: List[str] = field(default_factory=list)
+    location: str = ""

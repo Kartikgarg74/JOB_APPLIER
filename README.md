@@ -1,114 +1,129 @@
-# JobApplierAgent Monorepo
+# JOB APPLIER
 
-This monorepo contains the complete autonomous agent for automating the job application process.
+## Overview
+An autonomous job application system that optimizes and automates the job search process using AI agents, a modular Python backend, and a Next.js/React frontend. The project is containerized with Docker and supports free-tier deployment.
+
+---
+
+## Technology Stack
+- **Frontend:** Next.js, React, TypeScript, Tailwind CSS
+- **Backend:** FastAPI (Python), modular microservices
+- **Database:** PostgreSQL
+- **Queue:** Upstash Redis (cloud), Celery
+- **Monitoring:** Prometheus, Grafana, Loki
+- **Testing:** Pytest (backend), Jest/Playwright (frontend)
+- **AI/ML:** spaCy, SentenceTransformers, custom agents
+- **Orchestration:** Docker Compose, Nginx
+
+---
+
+## Prerequisites
+- [Docker](https://www.docker.com/products/docker-desktop) (with Compose)
+- [Node.js](https://nodejs.org/) (for local frontend dev)
+- Upstash Redis account (free tier)
+
+---
+
+## Environment Variables
+Create a `.env` file in the project root with:
+```
+UPSTASH_REDIS_REST_URL=your-upstash-redis-url
+UPSTASH_REDIS_REST_TOKEN=your-upstash-redis-token
+# Add any other required secrets here
+```
+
+---
 
 ## Project Structure
-
 ```
 project-root/
-├── apps/                    # Application packages
-│   └── job-applier-agent/   # Main application orchestrating the workflow
-├── packages/                # Shared packages
-│   ├── agents/              # Core agent implementations
-│   ├── utilities/           # Shared utility functions and classes
-│   ├── types/               # Shared type definitions
-│   ├── config/              # Shared configurations (e.g., user_profile.json)
-│   └── database/            # Database schemas and migrations
-├── tools/                   # Development tools and scripts
-├── docs/                    # Documentation
-└── README.md                # Root documentation
+├── apps/
+│   ├── agent_orchestration_service/
+│   ├── ats_service/
+│   ├── user_service/
+│   └── job_applier_agent/
+├── packages/           # Shared agents, utilities, config, database
+├── frontend/           # Next.js app
+├── data/               # Nginx config, monitoring data
+├── tools/              # Monitoring configs, scripts
+├── docker-compose.yml
+├── README.md
+└── ...
 ```
 
-## Setup and Installation
+---
 
-1.  **Clone the repository**:
+## Quick Start (Docker)
+1. **Build all services:**
+   ```sh
+   docker compose build --no-cache | tee docker-compose.log
+   ```
+2. **Start the stack:**
+   ```sh
+   docker compose up --remove-orphans --force-recreate | tee docker-compose.log
+   ```
+3. **Access the app:**
+   - Frontend: [http://localhost](http://localhost)
+   - API Endpoints:
+     - `/api/agent/` → Agent Orchestration
+     - `/api/ats/` → ATS Service
+     - `/api/user/` → User Service
+   - Monitoring:
+     - Grafana: [http://localhost:3000](http://localhost:3000) (default admin/admin)
+     - Prometheus: [http://localhost:9090](http://localhost:9090)
 
-    ```bash
-    git clone <repository_url>
-    cd JOB APPLIER
-    ```
+---
 
-2.  **Configure User Profile**:
+## Development
+- **Frontend:**
+  ```sh
+  cd frontend
+  npm install
+  npm run dev
+  ```
+- **Backend (example):**
+  ```sh
+  cd apps/agent_orchestration_service
+  uvicorn src.main:app --reload --port 8002
+  # Repeat for other services as needed
+  ```
 
-    Edit the `packages/config/user_profile.json` file with your preferred job roles, location preferences, resume path, skill keywords, and ATS scoring weights.
+---
 
-    ```json
-    {
-      "preferred_job_roles": [
-        "Software Engineer",
-        "Data Scientist",
-        "DevOps Engineer"
-      ],
-      "location_preferences": {
-        "remote": true,
-        "hybrid": false,
-        "on_site": [
-          "New York, NY",
-          "San Francisco, CA"
-        ]
-      },
-      "resume_path": "/path/to/your/resume.pdf",
-      "cover_letter_template": "/path/to/your/cover_letter_template.txt",
-      "skill_keywords": [
-        "Python",
-        "Machine Learning",
-        "Cloud Computing",
-        "React",
-        "Docker"
-      ],
-      "ats_scoring_weights": {
-        "keywords_match": 0.4,
-        "experience_match": 0.3,
-        "skills_match": 0.2,
-        "education_match": 0.1
-      }
-    }
-    ```
+## Testing
+- **Backend:**
+  ```sh
+  cd apps/job_applier_agent
+  pytest
+  ```
+- **Frontend:**
+  ```sh
+  cd frontend
+  npm run test
+  npx playwright test
+  ```
 
-3.  **Install Dependencies**:
+---
 
-    Navigate to the `apps/job-applier-agent` directory and install the required Python packages.
+## Troubleshooting
+- **ModuleNotFoundError: No module named 'packages'**
+  - Ensure Docker build context is set to project root in `docker-compose.yml`.
+  - Each backend Dockerfile must copy `../../packages` and set `PYTHONPATH=/app`.
+- **Redis connection errors:**
+  - Make sure `.env` has correct Upstash Redis credentials.
+- **Port conflicts:**
+  - Dashboard runs on 3001 (container 3000), Nginx on 80, Grafana on 3000, Prometheus on 9090.
+- **Nginx 502/504 errors:**
+  - Check backend service logs for crashes or import errors.
+- **Build errors (input/output error):**
+  - Clean up large/unused files, ensure enough disk space, and avoid copying `.venv` or `node_modules` into containers.
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+---
 
-## Running the Agent
+## Contributing
+Pull requests and issues are welcome! Please see the `CONTRIBUTING.md` for guidelines.
 
-Further instructions on running the agent will be provided in `apps/job-applier-agent/README.md`.
+---
 
-## Documentation
-
-Refer to the `docs/` directory for detailed architecture and API references.
-
-## Message Queue (Celery + Redis)
-
-### Running Redis (Docker Compose)
-```
-docker-compose up redis
-```
-
-### Running Celery Workers
-```
-celery -A packages.message_queue.celery_app worker --loglevel=info
-```
-
-### Running Celery Beat (for scheduled jobs)
-```
-celery -A packages.message_queue.celery_app beat --loglevel=info
-```
-
-### Running Flower (Monitoring Dashboard)
-```
-flower -A packages.message_queue.celery_app --port=5555
-```
-
-### Example: Sending a Task
-```python
-from packages.message_queue.tasks import send_email_task
-send_email_task.delay("user@example.com", "Welcome!", "Thanks for signing up.")
-```
-
-- Failed tasks are sent to the dead letter queue after max retries.
-- Rate limiting, prioritization, and retry logic are built-in.
-- Periodic jobs (e.g., file cleanup) are scheduled via Celery Beat.
+## License
+MIT

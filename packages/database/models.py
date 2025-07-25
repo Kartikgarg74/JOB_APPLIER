@@ -35,9 +35,6 @@ class User(Base):
     _linkedin_profile = Column("linkedin_profile", String(255), nullable=True)  # public (if user chooses)
     _github_profile = Column("github_profile", String(255), nullable=True)  # public (if user chooses)
     years_of_experience = Column(Integer, CheckConstraint('years_of_experience >= 0 AND years_of_experience <= 100'), nullable=True)  # public
-    skills = Column(
-        Text, nullable=True
-    )  # public
     profile_visibility = Column(String(20), default="public")  # public, private, connections-only
     show_email = Column(Boolean, default=False)  # user privacy control for email visibility
 

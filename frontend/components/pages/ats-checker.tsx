@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Upload, FileText, Link, CheckCircle, AlertTriangle, TrendingUp, Target, Zap, Download } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
-import { apiRequest } from "@/lib/utils";
+import { useApiServices } from '@/lib/api-context';
+import { AtsResults } from '@/lib/ats';
+import { useMemo, useCallback } from 'react';
 
 // ErrorBoundary component
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
@@ -44,10 +46,24 @@ export function ATSChecker() {
   const [showResults, setShowResults] = useState(false);
   const [jobDescription, setJobDescription] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [atsResults, setAtsResults] = useState<any>(null);
+  const [atsResults, setAtsResults] = useState<AtsResults | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async () => {
+  const { fetchAtsScore } = useApiServices();
+
+  const getScoreColor = useCallback((score: number) => {
+    if (score >= 85) return "text-green-600"
+    if (score >= 70) return "text-yellow-600"
+    return "text-red-600"
+  }, []);
+
+  const getScoreGradient = useCallback((score: number) => {
+    if (score >= 85) return "from-green-500 to-emerald-500"
+    if (score >= 70) return "from-yellow-500 to-orange-500"
+    return "from-red-500 to-pink-500"
+  }, []);
+
+  const handleAnalyze = useCallback(async () => {
     if (!resumeFile || !jobDescription) {
       setError("Please upload a resume and provide a job description.");
       return;
@@ -57,38 +73,19 @@ export function ATSChecker() {
     setShowResults(false);
     setAtsResults(null);
     try {
-      const formData = new FormData();
-      formData.append("resume_file", resumeFile);
-      formData.append("job_description", jobDescription);
-      const result = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/v1"}/ats-score`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!result.ok) {
-        const err = await result.json();
-        throw new Error(err.message || "Failed to get ATS score");
-      }
-      const data = await result.json();
+      const data = await fetchAtsScore(resumeFile, jobDescription);
       setAtsResults(data);
       setShowResults(true);
-    } catch (e: any) {
-      setError(e.message || "An error occurred");
+    } catch (e) {
+      if (e instanceof Error) {
+        setError(e.message || "An error occurred");
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setIsAnalyzing(false);
     }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score >= 85) return "text-green-600"
-    if (score >= 70) return "text-yellow-600"
-    return "text-red-600"
-  }
-
-  const getScoreGradient = (score: number) => {
-    if (score >= 85) return "from-green-500 to-emerald-500"
-    if (score >= 70) return "from-yellow-500 to-orange-500"
-    return "from-red-500 to-pink-500"
-  }
+  }, [resumeFile, jobDescription, fetchAtsScore]);
 
   if (showResults) {
     return (
@@ -113,16 +110,16 @@ export function ATSChecker() {
             </CardHeader>
             <CardContent className="text-center">
               <div
-                className={`text-4xl sm:text-6xl font-bold mb-2 bg-gradient-to-r ${getScoreGradient(atsResults?.score)} bg-clip-text text-transparent`}
+                className={`text-4xl sm:text-6xl font-bold mb-2 bg-gradient-to-r ${getScoreGradient(atsResults?.score ?? 0)} bg-clip-text text-transparent`}
               >
-                {atsResults?.score}
+                {atsResults?.score ?? 0}
               </div>
               <Badge
-                className={`text-base sm:text-lg px-4 py-1 ${getScoreColor(atsResults?.score)} bg-transparent border-current`}
+                className={`text-base sm:text-lg px-4 py-1 ${getScoreColor(atsResults?.score ?? 0)} bg-transparent border-current`}
               >
-                {atsResults?.grade}
+                {atsResults?.grade ?? "N/A"}
               </Badge>
-              <Progress value={atsResults?.score} className="mt-4 h-3" />
+              <Progress value={atsResults?.score ?? 0} className="mt-4 h-3" />
             </CardContent>
           </Card>
 
@@ -131,8 +128,8 @@ export function ATSChecker() {
               <CardTitle className="text-base sm:text-lg">Skills Match</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold mb-2">{atsResults?.skillsMatch}%</div>
-              <Progress value={atsResults?.skillsMatch} className="h-2" />
+              <div className="text-2xl sm:text-3xl font-bold mb-2">{atsResults?.skillsMatch ?? 0}%</div>
+              <Progress value={atsResults?.skillsMatch ?? 0} className="h-2" />
             </CardContent>
           </Card>
 
@@ -141,8 +138,8 @@ export function ATSChecker() {
               <CardTitle className="text-base sm:text-lg">Keywords</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold mb-2">{atsResults?.keywordsMatch}%</div>
-              <Progress value={atsResults?.keywordsMatch} className="h-2" />
+              <div className="text-2xl sm:text-3xl font-bold mb-2">{atsResults?.keywordsMatch ?? 0}%</div>
+              <Progress value={atsResults?.keywordsMatch ?? 0} className="h-2" />
             </CardContent>
           </Card>
         </div>
@@ -158,7 +155,7 @@ export function ATSChecker() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {atsResults?.suggestions?.map((suggestion: any, index: number) => (
+              {atsResults?.suggestions?.map((suggestion: AtsResults['suggestions'][number], index: number) => (
                 <Alert
                   key={index}
                   className={
@@ -199,7 +196,7 @@ export function ATSChecker() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {atsResults?.skillsAnalysis?.map((skill: any, index: number) => (
+              {atsResults?.skillsAnalysis?.map((skill: AtsResults['skillsAnalysis'][number], index: number) => (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
