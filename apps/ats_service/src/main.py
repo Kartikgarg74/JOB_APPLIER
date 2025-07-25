@@ -7,7 +7,7 @@ import logging
 from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
 
-from src.ats_api import router as ats_router
+from .ats_api import router as ats_router
 
 setup_logging()
 
