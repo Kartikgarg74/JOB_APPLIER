@@ -5,15 +5,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@next/bundle-analyzer": "^15.4.4",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.44.4",
+    "compression": "^1.8.1",
     "next": "^14.0.4",
     "next-auth": "^4.24.11",
+    "next-pwa": "^5.6.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

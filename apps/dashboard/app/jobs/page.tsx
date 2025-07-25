@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRef } from "react";
 
 interface JobListing {
   id: string;
@@ -16,6 +17,31 @@ interface JobListing {
   date_discovered: string;
   is_applied: boolean;
   application_status: string;
+}
+
+function exportToCSV(data: any[], filename: string) {
+  if (!data.length) return;
+  const keys = Object.keys(data[0]);
+  const csv = [keys.join(",")].concat(
+    data.map(row => keys.map(k => JSON.stringify(row[k] ?? "")).join(","))
+  ).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportToJSON(data: any[], filename: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function JobsPage() {
@@ -64,7 +90,27 @@ export default function JobsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-4xl font-bold mb-8">Job Listings</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">Job Listings</h1>
+        <div className="flex gap-2">
+          <button
+            aria-label="Export jobs as CSV"
+            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 focus:outline-none focus:ring"
+            onClick={() => exportToCSV(jobListings, "job_listings.csv")}
+            disabled={!jobListings.length}
+          >
+            Export CSV
+          </button>
+          <button
+            aria-label="Export jobs as JSON"
+            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 focus:outline-none focus:ring"
+            onClick={() => exportToJSON(jobListings, "job_listings.json")}
+            disabled={!jobListings.length}
+          >
+            Export JSON
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {jobListings.map((job) => (
           <div key={job.id} className="bg-white p-6 rounded-lg shadow-md">

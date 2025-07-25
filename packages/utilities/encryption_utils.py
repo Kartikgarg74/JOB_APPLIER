@@ -64,6 +64,22 @@ def decrypt_data(encrypted_data: str) -> str:
         raise
 
 
+def mask_email(email: str) -> str:
+    if not email or '@' not in email:
+        return email
+    name, domain = email.split('@', 1)
+    if len(name) <= 1:
+        return '*' * len(name) + '@' + domain
+    return name[0] + '***' + '@' + domain
+
+def mask_phone(phone: str) -> str:
+    if not phone or len(phone) < 4:
+        return '*' * len(phone)
+    return '*' * (len(phone) - 4) + phone[-4:]
+
+# Add more masking functions as needed (address, etc.)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     # Example Usage

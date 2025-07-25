@@ -82,15 +82,15 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-2 sm:px-4 md:px-0">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">Settings</h1>
-        <p className="text-muted-foreground">Manage your account preferences and connected services</p>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Settings</h1>
+        <p className="text-muted-foreground text-base sm:text-lg">Manage your account preferences and connected services</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="resumes">Resumes</TabsTrigger>
@@ -109,13 +109,13 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Profile Picture */}
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
                 <Avatar className="w-20 h-20">
                   <AvatarImage src="/placeholder.svg?height=80&width=80" alt="Profile" />
                   <AvatarFallback className="text-lg">AJ</AvatarFallback>
                 </Avatar>
-                <div className="space-y-2">
-                  <Button variant="outline" size="sm">
+                <div className="space-y-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
                     <Upload className="w-4 h-4 mr-2" />
                     Upload Photo
                   </Button>
@@ -126,13 +126,14 @@ export function SettingsPage() {
               <Separator />
 
               {/* Personal Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
                   <Input
                     id="firstName"
                     value={profile.firstName}
                     onChange={(e) => handleProfileChange("firstName", e.target.value)}
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-2">
@@ -141,6 +142,7 @@ export function SettingsPage() {
                     id="lastName"
                     value={profile.lastName}
                     onChange={(e) => handleProfileChange("lastName", e.target.value)}
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-2">
@@ -150,6 +152,7 @@ export function SettingsPage() {
                     type="email"
                     value={profile.email}
                     onChange={(e) => handleProfileChange("email", e.target.value)}
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-2">
@@ -158,6 +161,7 @@ export function SettingsPage() {
                     id="phone"
                     value={profile.phone}
                     onChange={(e) => handleProfileChange("phone", e.target.value)}
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-2">
@@ -166,12 +170,13 @@ export function SettingsPage() {
                     id="location"
                     value={profile.location}
                     onChange={(e) => handleProfileChange("location", e.target.value)}
+                    className="w-full"
                   />
                 </div>
               </div>
 
               <div className="flex justify-end">
-                <Button className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700">
+                <Button className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 w-full sm:w-auto">
                   <Save className="w-4 h-4 mr-2" />
                   Save Changes
                 </Button>
@@ -191,7 +196,7 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                   <div>
                     <Label htmlFor="emailAlerts" className="text-base font-medium">
                       Email Alerts
@@ -202,12 +207,13 @@ export function SettingsPage() {
                     id="emailAlerts"
                     checked={notifications.emailAlerts}
                     onCheckedChange={(checked) => handleNotificationChange("emailAlerts", checked)}
+                    className="mt-2 sm:mt-0"
                   />
                 </div>
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                   <div>
                     <Label htmlFor="jobMatches" className="text-base font-medium">
                       Job Match Alerts
@@ -218,12 +224,13 @@ export function SettingsPage() {
                     id="jobMatches"
                     checked={notifications.jobMatches}
                     onCheckedChange={(checked) => handleNotificationChange("jobMatches", checked)}
+                    className="mt-2 sm:mt-0"
                   />
                 </div>
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                   <div>
                     <Label htmlFor="applicationUpdates" className="text-base font-medium">
                       Application Updates
@@ -234,12 +241,13 @@ export function SettingsPage() {
                     id="applicationUpdates"
                     checked={notifications.applicationUpdates}
                     onCheckedChange={(checked) => handleNotificationChange("applicationUpdates", checked)}
+                    className="mt-2 sm:mt-0"
                   />
                 </div>
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                   <div>
                     <Label htmlFor="weeklyDigest" className="text-base font-medium">
                       Weekly Digest
@@ -250,12 +258,13 @@ export function SettingsPage() {
                     id="weeklyDigest"
                     checked={notifications.weeklyDigest}
                     onCheckedChange={(checked) => handleNotificationChange("weeklyDigest", checked)}
+                    className="mt-2 sm:mt-0"
                   />
                 </div>
 
                 <Separator />
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                   <div>
                     <Label htmlFor="marketingEmails" className="text-base font-medium">
                       Marketing Emails
@@ -266,6 +275,7 @@ export function SettingsPage() {
                     id="marketingEmails"
                     checked={notifications.marketingEmails}
                     onCheckedChange={(checked) => handleNotificationChange("marketingEmails", checked)}
+                    className="mt-2 sm:mt-0"
                   />
                 </div>
               </div>
@@ -287,7 +297,7 @@ export function SettingsPage() {
                 <Upload className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
                 <h3 className="font-medium mb-2">Upload New Resume</h3>
                 <p className="text-sm text-muted-foreground mb-4">Drag and drop or click to browse</p>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Upload className="w-4 h-4 mr-2" />
                   Choose File
                 </Button>
@@ -296,7 +306,7 @@ export function SettingsPage() {
               <div className="space-y-4">
                 <h4 className="font-medium">Resume Versions</h4>
                 {resumeVersions.map((resume) => (
-                  <div key={resume.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={resume.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <FileText className="w-5 h-5 text-muted-foreground" />
                       <div>
@@ -313,16 +323,16 @@ export function SettingsPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <Eye className="w-4 h-4 mr-2" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <Download className="w-4 h-4 mr-2" />
                         Download
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -344,7 +354,7 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
                       <Linkedin className="w-5 h-5 text-blue-600" />
@@ -354,10 +364,10 @@ export function SettingsPage() {
                       <p className="text-sm text-muted-foreground">Import profile data and job recommendations</p>
                     </div>
                   </div>
-                  <Button variant="outline">Connect</Button>
+                  <Button variant="outline" className="w-full sm:w-auto">Connect</Button>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                       <Github className="w-5 h-5" />
@@ -367,10 +377,10 @@ export function SettingsPage() {
                       <p className="text-sm text-muted-foreground">Showcase your coding projects and contributions</p>
                     </div>
                   </div>
-                  <Badge variant="secondary">Connected</Badge>
+                  <Badge variant="secondary" className="w-full sm:w-auto text-center">Connected</Badge>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
                       <Chrome className="w-5 h-5 text-red-600" />
@@ -380,7 +390,7 @@ export function SettingsPage() {
                       <p className="text-sm text-muted-foreground">Sync resumes and documents automatically</p>
                     </div>
                   </div>
-                  <Button variant="outline">Connect</Button>
+                  <Button variant="outline" className="w-full sm:w-auto">Connect</Button>
                 </div>
               </div>
             </CardContent>
@@ -401,10 +411,10 @@ export function SettingsPage() {
                 <div>
                   <h4 className="font-medium mb-2">Change Password</h4>
                   <div className="space-y-3">
-                    <Input type="password" placeholder="Current password" />
-                    <Input type="password" placeholder="New password" />
-                    <Input type="password" placeholder="Confirm new password" />
-                    <Button variant="outline">Update Password</Button>
+                    <Input type="password" placeholder="Current password" className="w-full" />
+                    <Input type="password" placeholder="New password" className="w-full" />
+                    <Input type="password" placeholder="Confirm new password" className="w-full" />
+                    <Button variant="outline" className="w-full sm:w-auto">Update Password</Button>
                   </div>
                 </div>
 
@@ -414,7 +424,7 @@ export function SettingsPage() {
                   <h4 className="font-medium mb-2">API Keys</h4>
                   <p className="text-sm text-muted-foreground mb-4">Manage API keys for third-party integrations</p>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 border rounded">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 p-3 border rounded">
                       <div className="flex items-center gap-2">
                         <Key className="w-4 h-4" />
                         <span className="font-mono text-sm">sk-...7a2b</span>
@@ -422,11 +432,11 @@ export function SettingsPage() {
                           Active
                         </Badge>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
                         Revoke
                       </Button>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto">
                       <Plus className="w-4 h-4 mr-2" />
                       Generate New Key
                     </Button>
@@ -443,7 +453,7 @@ export function SettingsPage() {
                       Once you delete your account, there is no going back. Please be certain.
                     </AlertDescription>
                   </Alert>
-                  <Button variant="destructive" className="mt-4">
+                  <Button variant="destructive" className="mt-4 w-full sm:w-auto">
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Account
                   </Button>

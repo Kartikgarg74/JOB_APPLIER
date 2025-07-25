@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from datetime import datetime
 import uuid
-from packages.database.config import Base, SessionLocal
+from packages.database.config import Base
 
 
 class JobListing(Base):
@@ -26,9 +26,11 @@ class JobListing(Base):
     source = Column(String)  # e.g., Indeed, LinkedIn, Google Jobs
     date_discovered = Column(DateTime, default=datetime.utcnow)
     is_applied = Column(Boolean, default=False)
-    application_status = Column(
-        String, default="Pending"
-    )  # e.g., 'Pending', 'Applied', 'Interviewing', 'Rejected'
+    application_status = Column(String, default="Pending", index=True)
+    __table_args__ = (
+        # Add index for application_status
+        # (other indexes can be added here as needed)
+    )
 
     def __repr__(self):
         return f"<JobListing(id='{self.id}', title='{self.title}', company='{self.company}')>"

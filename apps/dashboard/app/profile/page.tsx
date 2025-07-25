@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FaGoogle, FaMicrosoft, FaMapMarkerAlt } from "react-icons/fa";
 
 interface EducationEntry {
   degree: string;
@@ -459,7 +460,7 @@ export default function ProfilePage() {
       } else if (edu.start_date && edu.end_date && new Date(edu.start_date) > new Date(edu.end_date)) {
         errors[`education[${index}].end_date`] = "End Date cannot be before Start Date.";
       }
-      if (edu.description.length === 0 || edu.description[0].trim() === '') {
+      if (!edu.description || edu.description.length === 0 || (typeof edu.description === 'string' && edu.description.trim() === '') || (Array.isArray(edu.description) && edu.description[0].trim() === '')) {
         errors[`education[${index}].description`] = "Description is required.";
       }
     });
@@ -542,6 +543,33 @@ export default function ProfilePage() {
     }
   };
 
+  function exportToCSV(data: any, filename: string) {
+    if (!data) return;
+    const isArray = Array.isArray(data);
+    const arr = isArray ? data : [data];
+    const keys = Object.keys(arr[0]);
+    const csv = [keys.join(",")].concat(
+      arr.map(row => keys.map(k => JSON.stringify(row[k] ?? "")).join(","))
+    ).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportToJSON(data: any, filename: string) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center p-24">
@@ -560,7 +588,58 @@ export default function ProfilePage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-4xl font-bold mb-8">Your Profile & Resume</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">Profile</h1>
+        <div className="flex gap-2">
+          {/* Calendar Connect Buttons */}
+          <button
+            disabled
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded border border-gray-300 cursor-not-allowed"
+            title="Google Calendar integration coming soon"
+          >
+            <FaGoogle className="h-5 w-5" /> Connect Google Calendar (Coming Soon)
+          </button>
+          <button
+            disabled
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded border border-gray-300 cursor-not-allowed"
+            title="Outlook Calendar integration coming soon"
+          >
+            <FaMicrosoft className="h-5 w-5" /> Connect Outlook Calendar (Coming Soon)
+          </button>
+          <button
+            aria-label="Export profile as CSV"
+            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 focus:outline-none focus:ring"
+            onClick={() => exportToCSV(profile, "profile.csv")}
+            disabled={!profile}
+          >
+            Export Profile CSV
+          </button>
+          <button
+            aria-label="Export profile as JSON"
+            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 focus:outline-none focus:ring"
+            onClick={() => exportToJSON(profile, "profile.json")}
+            disabled={!profile}
+          >
+            Export Profile JSON
+          </button>
+          <button
+            aria-label="Export resume as CSV"
+            className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 focus:outline-none focus:ring"
+            onClick={() => exportToCSV(resume, "resume.csv")}
+            disabled={!resume}
+          >
+            Export Resume CSV
+          </button>
+          <button
+            aria-label="Export resume as JSON"
+            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 focus:outline-none focus:ring"
+            onClick={() => exportToJSON(resume, "resume.json")}
+            disabled={!resume}
+          >
+            Export Resume JSON
+          </button>
+        </div>
+      </div>
 
       {message && (
         <div
@@ -663,22 +742,35 @@ export default function ProfilePage() {
                   <p className="text-red-500 text-xs italic">{validationErrors.phone}</p>
                 )}
               </div>
+              {/* Location Input with Autocomplete (Coming Soon) */}
               <div className="mb-4">
                 <label
-                  htmlFor="address"
+                  htmlFor="location-autocomplete"
                   className="block text-gray-700 text-sm font-bold mb-2"
                 >
-                  Address:
+                  Location (Address):
                 </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={editedProfile.address || ''}
-                  onChange={handleProfileChange}
-                  disabled={!editMode}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    id="location-autocomplete"
+                    name="location"
+                    value={editedProfile.address || ''}
+                    onChange={handleProfileChange}
+                    disabled
+                    placeholder="Start typing your address... (Coming Soon)"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-400 bg-gray-100 leading-tight focus:outline-none focus:shadow-outline cursor-not-allowed"
+                  />
+                  <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
+                </div>
+                <span className="text-xs text-gray-400">Address autocomplete powered by Google/Mapbox coming soon.</span>
+              </div>
+              {/* Placeholder Map */}
+              <div className="mb-4">
+                <div className="w-full h-40 bg-gray-100 border rounded flex items-center justify-center text-gray-400">
+                  <FaMapMarkerAlt className="h-8 w-8 mr-2" />
+                  Map Coming Soon
+                </div>
               </div>
               <div className="mb-4">
                 <label
@@ -896,19 +988,17 @@ export default function ProfilePage() {
                   <textarea
                     id={`responsibilities-${index}`}
                     name="description"
-                    value={exp.description}
-                    onChange={(e) =>
-                      handleExperienceChange(index, {
-                        ...e,
-                        target: {
-                          ...e.target,
-                          value: e.target.value
-                            .split(",")
-                            .map((s) => s.trim()),
-                          name: "description",
-                        },
-                      })
-                    }
+                    value={Array.isArray(exp.description) ? exp.description.join(", ") : exp.description}
+                    onChange={(e) => {
+                      if (editMode && editedProfile) {
+                        const updatedExperience = [...editedProfile.experience];
+                        updatedExperience[index] = {
+                          ...updatedExperience[index],
+                          description: e.target.value.split(",").map((s) => s.trim()),
+                        };
+                        setEditedProfile({ ...editedProfile, experience: updatedExperience });
+                      }
+                    }}
                     disabled={!editMode}
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   />
@@ -1139,19 +1229,17 @@ export default function ProfilePage() {
                     type="text"
                     id={`project-technologies-${index}`}
                     name="technologies"
-                    value={project.technologies}
-                    onChange={(e) =>
-                      handleProjectChange(index, {
-                        ...e,
-                        target: {
-                          ...e.target,
-                          value: e.target.value
-                            .split(",")
-                            .map((s) => s.trim()),
-                          name: "technologies"
-                        }
-                      })
-                    }
+                    value={Array.isArray(project.technologies) ? project.technologies.join(", ") : project.technologies}
+                    onChange={(e) => {
+                      if (editMode && editedProfile) {
+                        const updatedProjects = [...editedProfile.projects];
+                        updatedProjects[index] = {
+                          ...updatedProjects[index],
+                          technologies: e.target.value.split(",").map((s) => s.trim()),
+                        };
+                        setEditedProfile({ ...editedProfile, projects: updatedProjects });
+                      }
+                    }}
                     disabled={!editMode}
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   />
@@ -1380,7 +1468,7 @@ export default function ProfilePage() {
                 <textarea
                   id="skills"
                   name="skills"
-                  value={editedProfile.skills.join(", ")}
+                  value={Array.isArray(editedProfile.skills) ? editedProfile.skills.join(", ") : editedProfile.skills}
                   onChange={handleProfileChange}
                   disabled={!editMode}
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -1396,7 +1484,7 @@ export default function ProfilePage() {
                 <textarea
                   id="education"
                   name="education"
-                  value={editedProfile.education.join(", ")}
+                  value={Array.isArray(editedProfile.education) ? editedProfile.education.join(", ") : editedProfile.education}
                   onChange={handleProfileChange}
                   disabled={!editMode}
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"

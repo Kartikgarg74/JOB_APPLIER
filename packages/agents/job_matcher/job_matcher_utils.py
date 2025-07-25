@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Tuple, Optional
 from sqlalchemy.orm import Session
 from packages.database.user_data_model import UserDatabase
+import difflib
 
 def load_user_profile_data(db: Session) -> Dict[str, Any]:
     """
@@ -81,17 +82,34 @@ def calculate_education_score(user_education: set, job_education: set) -> Tuple[
 def calculate_preference_score(user_preferences: Dict[str, Any], job: Dict[str, Any]) -> float:
     """
     [CONTEXT] Calculates the preference matching score.
-    [PURPOSE] Quantifies how well a job aligns with user's specified preferences.
+    [PURPOSE] Quantifies how well a job aligns with user's specified preferences, including fuzzy location matching and remote/hybrid logic.
     """
     preference_score = 0
-    # Define the maximum possible score for preferences
     MAX_PREFERENCE_SCORE = 15
 
-    # Location preference
-    job_location = job.get("location")
+    # Enhanced Location preference (fuzzy and remote/hybrid logic)
+    job_location = job.get("location", "")
     user_job_locations = user_preferences.get("job_locations", [])
-    if job_location and user_job_locations and job_location in user_job_locations:
-        preference_score += MAX_PREFERENCE_SCORE * 0.4  # 40% of preference score for location
+    job_remote = job.get("remote")
+    user_remote_preference = user_preferences.get("remote")
+    location_score = 0
+    if user_job_locations:
+        for user_loc in user_job_locations:
+            # Exact match
+            if job_location == user_loc:
+                location_score = MAX_PREFERENCE_SCORE * 0.4
+                break
+            # Fuzzy match (city/region similarity)
+            similarity = difflib.SequenceMatcher(None, job_location.lower(), user_loc.lower()).ratio()
+            if similarity > 0.8:
+                location_score = MAX_PREFERENCE_SCORE * 0.3  # Partial for close match
+                break
+            elif similarity > 0.6:
+                location_score = MAX_PREFERENCE_SCORE * 0.2  # Lesser for somewhat close
+        # Remote/hybrid logic
+        if (job_remote or ("remote" in job_location.lower() or "hybrid" in job_location.lower())) and (user_remote_preference or "remote" in [l.lower() for l in user_job_locations]):
+            location_score = max(location_score, MAX_PREFERENCE_SCORE * 0.4)  # Full points for remote match
+    preference_score += location_score
 
     # Job type preference (e.g., Full-time, Contract)
     job_type = job.get("job_type")
@@ -99,49 +117,50 @@ def calculate_preference_score(user_preferences: Dict[str, Any], job: Dict[str, 
     if job_type and user_job_types and job_type in user_job_types:
         preference_score += MAX_PREFERENCE_SCORE * 0.3  # 30% of preference score for job type
 
-    # Salary range preference
-    job_salary_normalized = job.get("salary") # Assuming this is a normalized value, e.g., 0.7 for $70k
+    # Salary range preference (robust comparison)
+    job_salary_normalized = job.get("salary")  # 0-1, where 1 = $200,000
     user_salary_range_str = user_preferences.get("salary_range")
-    if job_salary_normalized and user_salary_range_str:
+    if job_salary_normalized is not None and user_salary_range_str:
         try:
-            # Parse user's salary range (e.g., "$90,000 - $120,000")
             min_salary_str, max_salary_str = user_salary_range_str.replace("$", "").replace(",", "").split(" - ")
             min_salary = int(min_salary_str)
             max_salary = int(max_salary_str)
-
-            # Assuming job_salary_normalized is a ratio of a max possible salary (e.g., $200,000)
-            # This needs to be aligned with how job_salary is generated in job processing
-            # For now, let's assume job_salary_normalized is a direct representation of salary in some unit
-            # and we need to convert it to a comparable range.
-            # A more robust solution would involve a clear definition of job['salary'] unit/scale.
-            # For demonstration, let's assume job_salary_normalized is a value from 0 to 1 representing a range up to $200,000
-            # So, job_salary_actual = job_salary_normalized * 200000
-            # This part needs to be refined based on actual data structure.
-            # For now, let's make a simplified check.
-            # If job_salary_normalized is within a reasonable range of user's preference, give some score.
-            # This is a placeholder and needs actual salary parsing/comparison logic.
-            # For the purpose of this test, we'll assume a simple match if it's not too far off.
-            # Let's assume job_salary_normalized is a value between 0 and 1, where 1 is a very high salary.
-            # We need to convert user's min/max salary to a normalized range to compare.
-            # This is a complex mapping and requires more context on how job['salary'] is derived.
-            # For now, I will skip detailed salary parsing and just check if the job has a salary and user has a preference.
-            # A simple check: if job_salary_normalized is within a certain range of the user's preferred range midpoint.
-            # This is a simplification for the current problem.
-            # Let's assign a fixed small score if salary is present and user has preference.
-            preference_score += MAX_PREFERENCE_SCORE * 0.2 # 20% for salary, placeholder logic
+            job_salary_actual = job_salary_normalized * 200000  # Assume 1.0 = $200,000
+            (min_salary + max_salary) / 2
+            if min_salary <= job_salary_actual <= max_salary:
+                preference_score += MAX_PREFERENCE_SCORE * 0.2  # 20% for salary, perfect match
+            elif job_salary_actual > max_salary:
+                preference_score += MAX_PREFERENCE_SCORE * 0.2  # Still a match if above
+            elif min_salary - 10000 <= job_salary_actual < min_salary:
+                preference_score += MAX_PREFERENCE_SCORE * 0.1  # Partial if within $10k below min
         except ValueError:
-            pass # Handle parsing error if salary_range is not in expected format
+            pass
 
-    # Other preferences can be added here with their respective weights
-    # For example, 'remote' preference
-    job_remote = job.get("remote")
-    user_remote_preference = user_preferences.get("remote") # Assuming user_preferences can have a 'remote' boolean/string
+    # Remote preference (already handled above, but keep for backward compatibility)
     if user_remote_preference is not None and job_remote == user_remote_preference:
-        preference_score += MAX_PREFERENCE_SCORE * 0.1 # 10% for remote preference
+        preference_score += MAX_PREFERENCE_SCORE * 0.1  # 10% for remote preference
 
-    # Add more preference factors as needed, ensuring their weights sum up to 1 (or 15 in this case)
+    return min(preference_score, MAX_PREFERENCE_SCORE)
 
-    return min(preference_score, MAX_PREFERENCE_SCORE) # Ensure score does not exceed max
+
+def calculate_culture_score(user_culture: Dict[str, Any], job_culture: Dict[str, Any]) -> float:
+    """
+    [CONTEXT] Calculates the company culture matching score.
+    [PURPOSE] Quantifies how well a user's culture preferences align with the company's culture attributes.
+    [SCHEMA] Both user_culture and job_culture are dicts with keys like 'work_life_balance', 'innovation', 'diversity', 'collaboration', 'growth', each 0-1.
+    [RETURNS] Score out of 10.
+    """
+    if not user_culture or not job_culture:
+        return 0.0
+    keys = set(user_culture.keys()) & set(job_culture.keys())
+    if not keys:
+        return 0.0
+    score = 0.0
+    for k in keys:
+        # Score is higher the closer the values are
+        diff = abs(float(user_culture[k]) - float(job_culture[k]))
+        score += max(0, 1 - diff)  # 1 if perfect match, 0 if opposite
+    return round((score / len(keys)) * 10, 2)  # Out of 10
 
 def calculate_opportunity_score(job: Dict[str, Any]) -> float:
     """

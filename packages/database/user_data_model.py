@@ -4,23 +4,12 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from packages.database.models import (
-    Base,
     User,
     Education,
     Experience,
     Project,
-    Skill,
-    Certification,
-    Language,
-    Award,
-    Publication,
-    Patent,
-    VolunteerExperience,
-    Reference,
-    CustomSection,
     JobPreference,
 )
-from packages.database.config import SessionLocal
 
 
 class UserDatabase:
@@ -337,3 +326,16 @@ class UserDatabase:
             return None
         finally:
              session.close()
+
+
+def log_audit(session: Session, user_id: int, action: str, table: str, row_id: int = None, details: dict = None):
+    from packages.database.models import AuditLog
+    audit = AuditLog(
+        user_id=user_id,
+        action=action,
+        table_name=table,
+        row_id=row_id,
+        details=details or {},
+    )
+    session.add(audit)
+    session.commit()

@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi.responses import JSONResponse
 import logging
-from typing import Generator, Any
+from typing import Generator, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from packages.database.config import SessionLocal
 from packages.agents.agent_manager import AgentManager
-from packages.common_types.common_types import ResumeData, JobListing
+from packages.common_types.common_types import JobListing
 from packages.errors.custom_exceptions import JobApplierException
 from pydantic import BaseModel
+import tempfile
+import os
+from packages.agents.job_scraper.job_scraper_agent import JobScraperAgent
 
 logger = logging.getLogger(__name__)
 
@@ -124,3 +128,106 @@ async def score_ats_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             details={"error": str(e)}
         )
+
+
+@router.post("/score_ats_file")
+async def score_ats_file_endpoint(
+    resume_file: UploadFile = File(...),
+    job_description: str = Form(...),
+    industry: str = Form(None),
+    db: Session = Depends(get_db),
+    token: TokenData = Depends(verify_token),
+) -> JSONResponse:
+    """
+    Score ATS compatibility for a resume file against a job description.
+    Accepts PDF/DOCX/TXT resume, parses it, and returns all ATS scoring fields.
+    """
+    try:
+        # Save uploaded file to a temp location
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:
+            tmp.write(await resume_file.read())
+            tmp_path = tmp.name
+        # Parse the file using the parser agent
+        agent_manager = AgentManager(db)
+        parser_agent = agent_manager.get_resume_parser_agent()
+        # Use the parser's file parsing method
+        parsed_resume_data = parser_agent.parse_resume_file(tmp_path)
+        os.unlink(tmp_path)
+        if not parsed_resume_data:
+            raise JobApplierException(
+                message="Failed to parse resume file.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                details={"filename": resume_file.filename}
+            )
+        ats_scorer_agent = agent_manager.get_ats_scorer_agent()
+        ats_result = ats_scorer_agent.score_ats(
+            parsed_resume_data, job_description, industry=industry
+        )
+        return JSONResponse({
+            "message": "ATS score generated successfully",
+            **ats_result
+        })
+    except SQLAlchemyError as e:
+        logger.error(
+            f"Database error during ATS scoring: {e}",
+            exc_info=True,
+        )
+        raise JobApplierException(
+            message="Failed to score ATS due to a database error.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            details={"error": str(e)}
+        )
+    except Exception as e:
+        logger.error(
+            f"An unexpected error occurred during ATS scoring: {e}",
+            exc_info=True,
+        )
+        raise JobApplierException(
+            message="An unexpected error occurred during ATS scoring.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            details={"error": str(e)}
+        )
+
+
+@router.post("/search_jobs")
+async def search_jobs_endpoint(
+    query: str = Form(...),
+    location: str = Form(""),
+    num_results: int = Form(10),
+    sources: List[str] = Form(["indeed", "linkedin", "glassdoor", "company"]),
+    db: Session = Depends(get_db),
+    token: TokenData = Depends(verify_token),
+) -> dict:
+    """
+    Search for jobs from multiple sources (Indeed, LinkedIn, Glassdoor, company, etc.).
+    Returns aggregated job listings or error if all sources fail.
+    """
+    try:
+        scraper_agent = JobScraperAgent()
+        all_jobs = []
+        source_map = {
+            "indeed": scraper_agent.search_indeed,
+            "linkedin": scraper_agent.search_linkedin,
+            "glassdoor": getattr(scraper_agent, "search_glassdoor", lambda *a, **kw: []),
+            "company": getattr(scraper_agent, "search_company", lambda *a, **kw: []),
+        }
+        for source in sources:
+            search_func = source_map.get(source.lower())
+            if search_func:
+                jobs = search_func(query, location, num_results)
+                for job in jobs:
+                    job["source"] = source
+                all_jobs.extend(jobs)
+        # Deduplicate by title+company+location
+        seen = set()
+        unique_jobs = []
+        for job in all_jobs:
+            key = (job.get("title"), job.get("company"), job.get("location"))
+            if key not in seen:
+                seen.add(key)
+                unique_jobs.append(job)
+        if not unique_jobs:
+            return {"message": "No jobs found or scraping was blocked.", "jobs": []}
+        return {"message": "Job search successful", "jobs": unique_jobs}
+    except Exception as e:
+        return {"message": f"Job search failed: {e}", "jobs": []}

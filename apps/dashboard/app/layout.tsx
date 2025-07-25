@@ -45,6 +45,11 @@ export default function RootLayout({
                   Notifications
                 </Link>
               </li>
+              <li>
+                <Link href="/settings" className="text-white hover:text-gray-300">
+                  Settings
+                </Link>
+              </li>
             </ul>
           </nav>
           <div className="container mx-auto p-4">{children}</div>

@@ -15,6 +15,8 @@ from packages.database.config import SessionLocal
 from packages.database.models import User, Education, Experience, Project, JobPreference, Skill
 from packages.notifications.notification_service import NotificationService
 from packages.database.config import get_db
+from packages.database.user_data_model import log_audit
+from apps.job_applier_agent.src.main import profile_update_counter
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,9 @@ class UserProfileUpdate(BaseModel):
     skills: Optional[str] = Field(
         None, max_length=1000
     )  # Consider a List[str] and handle serialization
+    onboarding_complete: Optional[bool] = Field(None, description="Has the user completed onboarding?")
+    onboarding_step: Optional[str] = Field(None, description="Current onboarding step or progress.")
+    job_preferences: Optional[dict] = Field(None, description="Job preferences for the user.")
 
     class Config:
         from_attributes = True
@@ -150,6 +155,9 @@ class JobPreferenceCreate(BaseModel):
         None, max_length=500
     )  # Consider a List[str] and handle serialization
     remote: Optional[bool] = False
+    job_type: Optional[str] = Field(None, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+    notifications: Optional[bool] = True
 
 
 class JobPreferenceResponse(JobPreferenceCreate):
@@ -163,6 +171,9 @@ class JobPreferenceUpdate(BaseModel):
     job_titles: Optional[str] = Field(None, max_length=500)
     locations: Optional[str] = Field(None, max_length=500)
     remote: Optional[bool] = None
+    job_type: Optional[str] = Field(None, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+    notifications: Optional[bool] = None
 
     class Config:
         from_attributes = True
@@ -196,7 +207,18 @@ async def get_user_profile(
         )
     try:
         logger.info(f"Successfully fetched profile for user ID: {current_user.id}")
-        return user
+        return UserProfileUpdate(
+            phone=user.phone,
+            address=user.address,
+            portfolio_url=user.portfolio_url,
+            personal_website=user.personal_website,
+            linkedin_profile=user.linkedin_profile,
+            github_profile=user.github_profile,
+            years_of_experience=user.years_of_experience,
+            skills=user.skills,
+            onboarding_complete=user.onboarding_complete,
+            onboarding_step=user.onboarding_step,
+        )
     except SQLAlchemyError as e:
         logger.error(
             f"Database error fetching profile for user {current_user.id}: {e}",
@@ -250,14 +272,28 @@ async def update_user_profile(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    for field, value in profile_data.dict(exclude_unset=True).items():
+    # Update main profile fields
+    for field, value in profile_data.dict(exclude_unset=True, exclude={"job_preferences"}).items():
         setattr(user, field, value)
+
+    # Update job preferences if provided
+    if hasattr(profile_data, "job_preferences") and profile_data.job_preferences:
+        prefs = profile_data.job_preferences
+        if user.job_preferences:
+            for key, value in prefs.items():
+                setattr(user.job_preferences, key, value)
+        else:
+            from packages.database.models import JobPreference
+            user.job_preferences = JobPreference(**prefs)
 
     notification_service = get_notification_service()
 
     try:
         db.commit()
         db.refresh(user)
+        profile_update_counter.inc()
+        logging.info(f"AUDIT: Profile updated for user ID: {current_user.id}")
+        log_audit(db, current_user.id, "profile_update", "users", current_user.id, {"fields": list(profile_data.dict(exclude_unset=True).keys())})
         logger.info(f"Successfully updated profile for user ID: {current_user.id}")
         try:
             notification_service.send_success_notification(
@@ -346,6 +382,9 @@ async def create_user_profile(
 
         db.commit()
         db.refresh(user)
+        profile_update_counter.inc()
+        logging.info(f"AUDIT: Profile created/updated for user ID: {current_user.id}")
+        log_audit(db, current_user.id, "profile_create_or_update", "users", current_user.id, {"fields": list(profile_data.dict(exclude_unset=True).keys())})
         logger.info(f"Successfully created/updated profile for user ID: {current_user.id}")
         try:
             notification_service.send_success_notification(

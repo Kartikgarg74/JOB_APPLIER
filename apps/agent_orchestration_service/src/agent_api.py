@@ -11,6 +11,7 @@ from packages.database.models import User
 import logging
 from packages.config.settings import settings
 from packages.errors.custom_exceptions import JobApplierException
+from apps.job_applier_agent.src.main import job_apply_counter
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -133,6 +134,7 @@ async def apply_for_job_endpoint(
         agent_manager = AgentManager(db)
         app_automation_agent = agent_manager.get_application_automation_agent()
         result = app_automation_agent.apply_for_job(application_data)
+        job_apply_counter.inc()
         logger.info(
             f"User {current_user.username} successfully initiated job application."
         )

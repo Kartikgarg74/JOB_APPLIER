@@ -2,8 +2,10 @@ import os
 import shutil
 import logging
 from typing import Dict, Any, List
+import json
+from datetime import datetime
 
-from fastapi import FastAPI, UploadFile, File, Form, Depends
+from fastapi import FastAPI, UploadFile, File, Form, Depends, Body
 from fastapi import HTTPException # Keep HTTPException for standard HTTP errors
 from packages.errors.custom_exceptions import JobApplierException, NotificationError
 from packages.notifications.notification_service import NotificationService
@@ -18,7 +20,6 @@ from packages.agents.agent_manager import AgentManager
 
 from packages.config.settings import settings
 
-from packages.message_queue.celery_app import celery_app
 from packages.message_queue.tasks import (
     process_resume_upload_task,
     calculate_ats_score_task,
@@ -29,11 +30,32 @@ from auth.auth_api import router as auth_router
 from sqlalchemy.orm import Session
 from packages.agents.unicorn_agent.unicorn_agent import UnicornAgent
 from packages.notifications.in_app_notifications.in_app_notification_manager import InAppNotificationManager
-from packages.database.models import InAppNotification
 from packages.agents.ats_scorer.ats_scorer_agent import ATSScorerAgent
 from fastapi import status
 from sqlalchemy.exc import SQLAlchemyError
 from packages.agents.application_automation.application_automation_agent import ApplicationAutomationAgent
+from packages.utilities.encryption_utils import fernet
+from prometheus_client import Counter
+from packages.agents.job_scraper.job_scraper_agent import JobScraperAgent
+from packages.utilities.parsers.resume_parser import extract_text_from_resume
+from fastapi.responses import JSONResponse
+
+# Redis cache setup
+REDIS_URL = getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
+redis_cache = Redis.from_url(REDIS_URL, decode_responses=True)
+
+CACHE_TTL = 60  # seconds
+
+def cache_key_builder(prefix: str, *args):
+    return f"{prefix}:" + ":".join(str(a) for a in args)
+
+async def get_or_set_cache(key: str, fetch_func, ttl: int = CACHE_TTL):
+    cached = await redis_cache.get(key)
+    if cached is not None:
+        return json.loads(cached)
+    value = await fetch_func()
+    await redis_cache.set(key, json.dumps(value), ex=ttl)
+    return value
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +82,10 @@ job_applier_agent_status = {
     "last_run": None,
     "next_run": None,
 }
+
+file_upload_counter = Counter('file_uploads_total', 'Total number of file uploads')
+file_download_counter = Counter('file_downloads_total', 'Total number of file downloads')
+job_apply_counter = Counter('job_applications_total', 'Total number of job applications')
 
 
 # Dependency to get FileManagement instance
@@ -162,12 +188,19 @@ class InAppNotificationResponse(BaseModel):
     response_model=UnicornAgentResponse,
     summary="Apply for Job using Unicorn Agent",
     description="Initiates the job application workflow using the Unicorn Agent.",
-    dependencies=[Depends(RateLimiter(times=1, seconds=5))]
+    tags=["Jobs"],
+    dependencies=[Depends(RateLimiter(times=1, seconds=5))],
+    responses={
+        200: {"description": "Job application queued successfully.", "content": {"application/json": {"example": {"status": "processing", "message": "Job application workflow has been queued for processing.", "task_id": "abc123"}}}},
+        400: {"description": "Invalid input or business logic error.", "content": {"application/json": {"example": {"status": "error", "message": "Invalid job posting URL."}}}},
+        500: {"description": "Internal server error.", "content": {"application/json": {"example": {"status": "error", "message": "Internal server error."}}}},
+    },
 )
 async def apply_job(
-    request: UnicornAgentRequest,
+    request: UnicornAgentRequest = Body(..., example={"user_profile": {"email": "user@example.com"}, "job_posting": {"url": "https://example.com/job/123"}}),
     notification_service: NotificationService = Depends(get_notification_service),
 ):
+    """Queue a job application workflow using the Unicorn Agent."""
     logger.info(f"Received request to apply for job with Unicorn Agent.")
     try:
         # Offload to Celery task
@@ -180,6 +213,8 @@ async def apply_job(
             notification_type="email",
             details={"subject": "Job Application Started", "task_id": task.id}
         )
+
+        job_apply_counter.inc()
 
         return {
             "status": "processing",
@@ -266,6 +301,7 @@ async def upload_resume(
     notification_service: NotificationService = Depends(get_notification_service),
 ):
     """Upload a resume file (PDF or DOCX)."""
+    file_upload_counter.inc()
     logger.info(f"Received request to upload resume: {file.filename}")
     allowed_extensions = ["pdf", "docx"]
     file_extension = file.filename.split(".")[-1].lower()
@@ -291,9 +327,12 @@ async def upload_resume(
         os.makedirs(resume_dir, exist_ok=True)
 
         file_location = os.path.join(resume_dir, file.filename)
-        logger.info(f"Saving resume to {file_location}")
+        logger.info(f"Saving encrypted resume to {file_location}")
+        # Encrypt file before saving
+        file_bytes = await file.read()
+        encrypted_bytes = fernet.encrypt(file_bytes)
         with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(encrypted_bytes)
 
         # Offload resume processing to a background task
         process_resume_upload_task.delay(
@@ -346,8 +385,8 @@ async def get_in_app_notifications(
     offset: int = 0,
     in_app_notification_manager: InAppNotificationManager = Depends(get_in_app_notification_manager),
 ):
-    logger.info(f"Received request to get in-app notifications for user {user_id}.")
-    try:
+    key = cache_key_builder("notifications", user_id, limit, offset)
+    async def fetch():
         notifications = in_app_notification_manager.get_notifications_for_user(user_id, limit, offset)
         return [
             InAppNotificationResponse(
@@ -356,11 +395,13 @@ async def get_in_app_notifications(
                 message=n.message,
                 details=n.details,
                 is_read=n.is_read,
-                created_at=n.created_at.isoformat() # Convert datetime to ISO format string
-            ) for n in notifications
+                created_at=n.created_at.isoformat()
+            ).dict() for n in notifications
         ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    result = await get_or_set_cache(key, fetch)
+    response = JSONResponse(content=result)
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_TTL}"
+    return response
 
 
 @v1_router.post(
@@ -495,7 +536,13 @@ class HealthCheckResponse(BaseModel):
     description="Retrieves the current operational status of the Job Applier Agent workflow, including its running state and last/next run times.",
 )
 async def get_status() -> StatusResponse:
-    return StatusResponse(status="success", data=job_applier_agent_status)
+    async def fetch():
+        return StatusResponse(status="success", data=job_applier_agent_status).dict()
+    key = cache_key_builder("status")
+    result = await get_or_set_cache(key, fetch)
+    response = JSONResponse(content=result)
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_TTL}"
+    return response
 
 
 @v1_router.post(
@@ -556,8 +603,13 @@ async def update_config(update: ConfigUpdate) -> ConfigResponse:
     description="Retrieves the current configuration settings of the Job Applier Agent.",
 )
 async def get_config() -> ConfigResponse:
-    # This would ideally read from a persistent config store
-    return ConfigResponse(status="success", data={"example_setting": "example_value"})
+    async def fetch():
+        return ConfigResponse(status="success", data={"example_setting": "example_value"}).dict()
+    key = cache_key_builder("config")
+    result = await get_or_set_cache(key, fetch)
+    response = JSONResponse(content=result)
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_TTL}"
+    return response
 
 
 @v1_router.get(
@@ -567,7 +619,13 @@ async def get_config() -> ConfigResponse:
     description="Performs a health check to ensure the Job Applier Agent is running and responsive.",
 )
 async def health_check() -> HealthCheckResponse:
-    return HealthCheckResponse(status="ok", message="Job Applier Agent is healthy")
+    async def fetch():
+        return HealthCheckResponse(status="ok", message="Job Applier Agent is healthy").dict()
+    key = cache_key_builder("health")
+    result = await get_or_set_cache(key, fetch)
+    response = JSONResponse(content=result)
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_TTL}"
+    return response
 
 
 @v1_router.post(
@@ -776,3 +834,157 @@ async def apply_for_job(
             status_code=500,
             details={"job_posting_url": job_posting_url, "error": str(e)},
         )
+
+
+class JobSearchRequest(BaseModel):
+    query: str
+    location: str = ""
+    num_results: int = 10
+
+class JobListing(BaseModel):
+    title: str = None
+    company: str = None
+    location: str = None
+    summary: str = None
+    url: str = None
+
+class JobSearchResponse(BaseModel):
+    jobs: list[JobListing]
+
+@v1_router.post(
+    "/job-search",
+    response_model=JobSearchResponse,
+    summary="Search jobs from multiple job boards",
+    description="Aggregates job listings from Indeed, LinkedIn, Google Jobs, and Glassdoor.",
+    tags=["Jobs"],
+    dependencies=[Depends(RateLimiter(times=3, seconds=10))],
+    responses={
+        200: {"description": "Job search results (cached for 60s)", "content": {"application/json": {"example": {"jobs": [{"title": "Software Engineer", "company": "Acme Corp", "location": "Remote", "summary": "Work on cool stuff", "url": "https://example.com/job/1"}]}}}},
+    },
+)
+async def job_search(request: JobSearchRequest):
+    agent = JobScraperAgent()
+    jobs = []
+    # Aggregate from all sources
+    jobs += agent.search_indeed(request.query, request.location, request.num_results)
+    jobs += agent.search_linkedin(request.query, request.location, request.num_results)
+    jobs += agent.search_google_jobs(request.query, request.location, request.num_results)
+    if hasattr(agent, 'search_glassdoor'):
+        jobs += agent.search_glassdoor(request.query, request.location, request.num_results)
+    # Remove duplicates by URL
+    seen = set()
+    unique_jobs = []
+    for job in jobs:
+        url = job.get('url')
+        if url and url not in seen:
+            seen.add(url)
+            unique_jobs.append(job)
+    response = JSONResponse(content=JobSearchResponse(jobs=[JobListing(**job) for job in unique_jobs]).dict())
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return response
+
+
+class AnalyticsEventRequest(BaseModel):
+    event_name: str
+    user_id: int = None
+    properties: dict = {}
+
+class AnalyticsEventResponse(BaseModel):
+    status: str
+    message: str
+
+@v1_router.post(
+    "/analytics/event",
+    response_model=AnalyticsEventResponse,
+    summary="Track a custom analytics event",
+    description="Receives a custom analytics event from frontend or other clients. Logs to file for analysis.",
+    dependencies=[Depends(RateLimiter(times=10, seconds=10))]
+)
+async def track_analytics_event(event: AnalyticsEventRequest):
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "event_name": event.event_name,
+        "user_id": event.user_id,
+        "properties": event.properties,
+    }
+    with open("output/analytics_events.log", "a") as f:
+        f.write(json.dumps(log_entry) + "\n")
+    return AnalyticsEventResponse(status="success", message="Event logged.")
+
+
+class CalendarConnectRequest(BaseModel):
+    provider: str  # 'google' or 'outlook'
+    user_id: int
+
+class CalendarConnectResponse(BaseModel):
+    status: str
+    message: str
+
+@v1_router.post(
+    "/calendar/connect",
+    response_model=CalendarConnectResponse,
+    summary="Connect calendar (Google/Outlook) - stub",
+    description="Stub endpoint for future calendar OAuth integration. Accepts provider and user_id.",
+    dependencies=[Depends(RateLimiter(times=5, seconds=10))]
+)
+async def connect_calendar(request: CalendarConnectRequest):
+    # In the future, redirect to OAuth flow and store tokens
+    return CalendarConnectResponse(
+        status="pending",
+        message=f"Calendar integration for {request.provider} coming soon. OAuth flow will be implemented here."
+    )
+
+
+class DocumentProcessResponse(BaseModel):
+    status: str
+    text: str = None
+    metadata: dict = {}
+    message: str = None
+
+@v1_router.post(
+    "/document/process",
+    response_model=DocumentProcessResponse,
+    summary="Process a document (resume, PDF, image)",
+    description="Extracts text and metadata from uploaded documents. Supports PDF, DOCX, and images (placeholder).",
+    dependencies=[Depends(RateLimiter(times=3, seconds=10))]
+)
+async def process_document(file: UploadFile = File(...), type: str = Form("resume")):
+    try:
+        if type in ["resume", "pdf", "docx"]:
+            # Save file temporarily
+            temp_path = f"/tmp/{file.filename}"
+            with open(temp_path, "wb") as f_out:
+                f_out.write(await file.read())
+            text = extract_text_from_resume(temp_path)
+            os.remove(temp_path)
+            return DocumentProcessResponse(status="success", text=text, metadata={"filename": file.filename, "type": type})
+        elif type == "image":
+            # Placeholder for OCR
+            return DocumentProcessResponse(status="pending", text=None, metadata={"filename": file.filename, "type": type}, message="Image OCR coming soon.")
+        else:
+            return DocumentProcessResponse(status="error", message="Unsupported document type.")
+    except Exception as e:
+        return DocumentProcessResponse(status="error", message=str(e))
+
+
+class LocationAutocompleteRequest(BaseModel):
+    query: str
+
+class LocationAutocompleteResponse(BaseModel):
+    suggestions: list[str]
+
+@v1_router.post(
+    "/location/autocomplete",
+    response_model=LocationAutocompleteResponse,
+    summary="Address autocomplete (stub)",
+    description="Returns placeholder address suggestions for a query. Integrate with Google/Mapbox later.",
+    dependencies=[Depends(RateLimiter(times=10, seconds=10))]
+)
+async def location_autocomplete(request: LocationAutocompleteRequest):
+    # Placeholder suggestions
+    suggestions = [
+        f"{request.query} Street, City, Country",
+        f"{request.query} Avenue, City, Country",
+        f"{request.query} Road, City, Country"
+    ]
+    return LocationAutocompleteResponse(suggestions=suggestions)

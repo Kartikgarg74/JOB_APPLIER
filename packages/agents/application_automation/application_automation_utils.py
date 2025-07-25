@@ -1,3 +1,6 @@
+"""
+This module may use environment variables for credentials (e.g., LINKEDIN_EMAIL, LINKEDIN_PASSWORD, INDEED_EMAIL, INDEED_PASSWORD) for automation agents.
+"""
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 from packages.database.user_data_model import UserDatabase

@@ -1,7 +1,29 @@
-fastapi==0.104.1
+# Core web framework and ASGI server
+fastapi==0.109.1
 uvicorn==0.23.2
-sqlalchemy==2.0.23
+
+# Database and ORM
+sqlalchemy==2.0.25
 pydantic==2.5.2
+pydantic-settings==2.1.0
+
+# Auth and security
+PyJWT==2.8.0
+python-jose==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1
+cryptography==42.0.5
 python-multipart==0.0.6
+
+# Background tasks and messaging
+celery==5.3.6
+redis==5.0.1
+APScheduler==3.10.4
+
+# Config and logging
 python-decouple==3.8
 loguru==0.7.2
+
+# Dev tools and testing
+pytest==8.0.2
+black==24.3.0

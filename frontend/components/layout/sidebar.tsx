@@ -14,6 +14,8 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  Menu as MenuIcon,
+  X as CloseIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -29,15 +31,35 @@ const navigation = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+
+  // Hamburger for mobile
+  const Hamburger = (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="fixed top-4 left-4 z-50 lg:hidden"
+      aria-label={mobileOpen ? "Close sidebar" : "Open sidebar"}
+      onClick={() => setMobileOpen((v) => !v)}
+    >
+      {mobileOpen ? <CloseIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+    </Button>
+  )
 
   return (
     <TooltipProvider>
+      {Hamburger}
+      {/* Sidebar overlay for mobile */}
       <div
         className={cn(
-          "flex flex-col bg-card border-r border-border transition-all duration-300",
+          "flex flex-col bg-card border-r border-border transition-all duration-300 z-40",
           collapsed ? "w-16" : "w-64",
+          // Mobile overlay
+          "fixed top-0 left-0 h-full lg:static lg:h-auto",
+          mobileOpen ? "block" : "hidden lg:flex"
         )}
+        aria-label="Sidebar navigation"
       >
         {/* Logo */}
         <div className="p-4 border-b border-border">
@@ -65,10 +87,13 @@ export function Sidebar() {
                 <Button
                   variant={isActive ? "default" : "ghost"}
                   className={cn(
-                    "w-full justify-start gap-3 h-11",
+                    "w-full justify-start gap-3 h-12 min-h-[44px] text-base",
                     collapsed && "justify-center px-2",
                     isActive && "bg-primary text-primary-foreground",
                   )}
+                  aria-label={item.name}
+                  tabIndex={0}
+                  onClick={() => setMobileOpen(false)}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   {!collapsed && <span>{item.name}</span>}
@@ -89,8 +114,8 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Collapse Toggle */}
-        <div className="p-4 border-t border-border">
+        {/* Collapse Toggle (desktop only) */}
+        <div className="p-4 border-t border-border hidden lg:block">
           <Button variant="ghost" size="sm" onClick={() => setCollapsed(!collapsed)} className="w-full justify-center">
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </Button>

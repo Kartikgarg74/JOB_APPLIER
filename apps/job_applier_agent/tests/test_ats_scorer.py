@@ -1,8 +1,5 @@
-import pytest
 from fastapi.testclient import TestClient
 from src.main import app
-import io
-from docx import Document
 
 client = TestClient(app)
 

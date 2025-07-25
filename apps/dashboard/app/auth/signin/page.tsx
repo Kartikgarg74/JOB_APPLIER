@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react";
 import { FcGoogle } from "react-icons/fc";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FaLinkedin, FaGithub, FaFacebook, FaTwitter } from "react-icons/fa";
 
 export default function SignInPage() {
   const [username, setUsername] = useState("");
@@ -87,6 +88,40 @@ export default function SignInPage() {
             <FcGoogle className="h-6 w-6" />
             <span>Sign in with Google</span>
           </button>
+          <div className="flex flex-col gap-2 mt-4">
+            <button
+              disabled
+              className="flex w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-gray-400 cursor-not-allowed"
+              title="Coming Soon"
+            >
+              <FaLinkedin className="h-6 w-6" />
+              <span>Sign in with LinkedIn (Coming Soon)</span>
+            </button>
+            <button
+              disabled
+              className="flex w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-gray-400 cursor-not-allowed"
+              title="Coming Soon"
+            >
+              <FaGithub className="h-6 w-6" />
+              <span>Sign in with GitHub (Coming Soon)</span>
+            </button>
+            <button
+              disabled
+              className="flex w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-gray-400 cursor-not-allowed"
+              title="Coming Soon"
+            >
+              <FaFacebook className="h-6 w-6" />
+              <span>Sign in with Facebook (Coming Soon)</span>
+            </button>
+            <button
+              disabled
+              className="flex w-full items-center justify-center space-x-2 rounded-md border border-gray-300 bg-gray-100 px-4 py-2 text-gray-400 cursor-not-allowed"
+              title="Coming Soon"
+            >
+              <FaTwitter className="h-6 w-6" />
+              <span>Sign in with Twitter (Coming Soon)</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

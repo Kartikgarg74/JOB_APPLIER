@@ -3,7 +3,7 @@ from packages.agents.application_automation.application_automation_agent import 
 
 @pytest.fixture
 def automation_agent():
-    return ApplicationAutomationAgent()
+    return ApplicationAutomationAgent(db=None)
 
 def test_fill_application_form_success(automation_agent):
     # Mock browser interaction or use a test browser instance

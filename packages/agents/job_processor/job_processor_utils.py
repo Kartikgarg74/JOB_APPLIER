@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 def clean_and_normalize_job(job: Dict[str, Any]) -> Dict[str, Any]:
     """

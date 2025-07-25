@@ -1,2 +1,12 @@
+# Background tasks and messaging
 celery==5.3.6
 redis==5.0.1
+APScheduler==3.10.4
+
+# Config and logging
+python-decouple==3.8
+loguru==0.7.2
+
+# Dev tools and testing
+pytest==8.0.2
+black==24.3.0

@@ -1,98 +1,155 @@
 import logging
-import logging
-from typing import Optional
+import os
+from typing import Optional, Dict, Any
 
-from packages.common_types.common_types import ResumeData
-from packages.agents.resume_parser.resume_utils import extract_personal_details, extract_skills
+from packages.agents.resume_parser.resume_utils import (
+    extract_personal_details,
+    extract_education,
+    extract_experience,
+    extract_skills,
+    extract_projects,
+    extract_text_from_pdf,
+    extract_text_from_docx,
+    validate_extracted_data,
+    extract_certifications,
+    extract_awards
+)
 
 logger = logging.getLogger(__name__)
 
-
 class ResumeParserAgent:
     """
-    [CONTEXT] Parses a resume text to extract structured information.
-    [PURPOSE] Converts raw resume text into a standardized `ResumeData` object.
+    [CONTEXT] Parses a resume to extract structured information using NLP.
+    [PURPOSE] Converts resume files (PDF/DOCX) into a standardized ResumeData object.
     """
 
     def __init__(self, db):
-        # db is passed for consistency with other agents, but not used in this simplified version
         self.db = db
-        logger.info("ResumeParserAgent initialized.")
+        logger.info("ResumeParserAgent initialized with NLP capabilities.")
 
-    def parse_resume(self, resume_text: str) -> Optional[ResumeData]:
+    def parse_resume_file(self, file_path: str) -> Optional[Dict[str, Any]]:
         """
-        [CONTEXT] Parses the content of a resume provided as a string.
-        [PURPOSE] Extracts key information such as personal details, experience, education, and skills.
+        Parse a resume file (PDF or DOCX) and extract structured information.
+        """
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return None
+
+        try:
+            # Extract text based on file type
+            if file_path.lower().endswith('.pdf'):
+                resume_text = extract_text_from_pdf(file_path)
+            elif file_path.lower().endswith(('.docx', '.doc')):
+                resume_text = extract_text_from_docx(file_path)
+            else:
+                logger.error(f"Unsupported file format: {file_path}")
+                return None
+
+            if not resume_text:
+                logger.error("Failed to extract text from resume file")
+                return None
+
+            return self.parse_resume(resume_text)
+
+        except Exception as e:
+            logger.error(f"Error parsing resume file: {e}")
+            return None
+
+    def parse_resume(self, resume_text: str) -> Optional[Dict[str, Any]]:
+        """
+        Parse resume text and extract structured information using NLP.
         """
         if not resume_text:
             logger.warning("Empty resume text provided.")
             return None
 
         try:
-            return self._structure_resume_data(resume_text)
+            # Extract all components
+            personal_details = extract_personal_details(resume_text)
+            education = extract_education(resume_text)
+            experience = extract_experience(resume_text)
+            skills = extract_skills(resume_text)
+            projects = extract_projects(resume_text)
+            certifications = extract_certifications(resume_text)
+            awards = extract_awards(resume_text)
+
+            # Create structured resume data
+            resume_data = {
+                "raw_text": resume_text,
+                "personal_details": personal_details,
+                "education": education,
+                "experience": experience,
+                "skills": skills,
+                "projects": projects,
+                "certifications": certifications,
+                "awards": awards,
+                "summary": "",  # TODO: Implement summary extraction using NLP
+                "keywords": skills,  # Using skills as keywords for now
+                "location": personal_details.get("location", "")
+            }
+
+            # Validate the extracted data
+            if not validate_extracted_data(resume_data):
+                logger.warning("Resume data validation failed")
+                return None
+
+            return resume_data
+
         except Exception as e:
             logger.error(f"Error parsing resume text: {e}")
             return None
 
-    def _structure_resume_data(self, raw_text: str) -> ResumeData:
-        """
-        [CONTEXT] Structures the raw text content into a standardized ResumeData object.
-        [PURPOSE] Converts unstructured text into a usable format for other agents.
-        """
-        # This is a simplified placeholder. A real implementation would use NLP
-        # techniques (e.g., spaCy, NLTK, or a dedicated resume parsing library/API)
-        # to extract entities like name, contact, experience, education, skills, etc.
-        logger.info("Structuring resume data from raw text.")
-
-        personal_details = extract_personal_details(raw_text)
-
-        # Placeholder for more advanced extraction of experience, education, and summary.
-        # This would typically involve more complex NLP models or rule-based systems.
-        experience = []
-        education = []
-        summary = ""
-
-        skills = extract_skills(raw_text)
-
-        return ResumeData(
-            raw_text=raw_text,
-            personal_details=personal_details,
-            summary=summary,
-            experience=experience,
-            education=education,
-            skills=skills,
-            certifications=[],
-            projects=[],
-            awards=[],
-            keywords=[], # Placeholder for actual keyword extraction
-            location="", # Placeholder for actual location extraction
-        )
-
 
 if __name__ == "__main__":
-    # Example Usage (for testing purposes)
-    import os
+    # Example Usage
+    import json
     from packages.utilities.logging_utils import setup_logging
-    from packages.config.settings import load_settings
 
     setup_logging()
-    settings = load_settings()
 
-    # Example resume text for testing
-    dummy_resume_text = (
-        "John Doe\n"
-        "john.doe@example.com\n"
-        "Software Engineer\n"
-        "Skills: Python, Java, AWS"
-    )
+    # Initialize parser
+    parser = ResumeParserAgent(None)
 
-    parser = ResumeParserAgent(None) # Pass None for db as it's not used in this example
-    resume_data = parser.parse_resume(dummy_resume_text)
+    # Example resume text
+    example_text = """
+    John Doe
+    john.doe@example.com | (123) 456-7890
+    github.com/johndoe | linkedin.com/in/johndoe
 
-    if resume_data:
-        print("\n--- Parsed Resume Data ---")
-        print(f"Raw Text: {resume_data['raw_text'][:100]}...")
-        print(f"Skills: {resume_data['skills']}")
-        print(f"Personal Details: {resume_data['personal_details']}")
+    EDUCATION
+    Master of Science in Computer Science
+    Stanford University, 2018-2020
+    GPA: 3.8
+
+    EXPERIENCE
+    Senior Software Engineer | TechCorp
+    January 2020 - Present
+    - Led development of microservices architecture using Python and Docker
+    - Implemented CI/CD pipeline reducing deployment time by 50%
+    - Mentored junior developers and conducted code reviews
+
+    Software Engineer | StartupCo
+    June 2018 - December 2019
+    - Developed RESTful APIs using Node.js and Express
+    - Optimized database queries improving response time by 40%
+
+    SKILLS
+    Languages: Python, JavaScript, Java, SQL
+    Frameworks: React, Node.js, Django, Flask
+    Tools: Git, Docker, Kubernetes, AWS
+
+    PROJECTS
+    AI-Powered Resume Parser
+    - Built using Python, spaCy, and FastAPI
+    - Implemented NLP for extracting structured data from resumes
+    - Achieved 95% accuracy in information extraction
+    """
+
+    # Parse resume
+    result = parser.parse_resume(example_text)
+
+    if result:
+        print("\n=== Parsed Resume Data ===")
+        print(json.dumps(result, indent=2))
     else:
         print("Failed to parse resume.")

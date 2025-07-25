@@ -1,21 +1,38 @@
 import logging
+import sys
+import json
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            'timestamp': self.formatTime(record, self.datefmt),
+            'level': record.levelname,
+            'name': record.name,
+            'message': record.getMessage(),
+            'pathname': record.pathname,
+            'lineno': record.lineno,
+        }
+        if record.exc_info:
+            log_record['exception'] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
 
-def setup_logging(log_level_str: str = "INFO"):
-    """
-    [CONTEXT] Sets up the logging configuration for the application.
-    [PURPOSE] Centralizes logging setup to ensure consistent log levels and formatting.
-    """
-    log_level = getattr(logging, log_level_str.upper(), logging.INFO)
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler()],
-    )
-    # Optionally, add a file handler
-    # log_file = os.getenv('LOG_FILE', 'job_applier_agent.log')
-    # file_handler = logging.FileHandler(log_file)
-    # file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    # logging.getLogger().addHandler(file_handler)
+def setup_logging(log_file: str = "output/centralized.log"):
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    formatter = JsonFormatter()
 
-    logging.info(f"Logging set up with level: {log_level_str.upper()}")
+    # Stream handler (stdout)
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setFormatter(formatter)
+    logger.addHandler(sh)
+
+    # File handler (central log file)
+    fh = logging.FileHandler(log_file)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    # Silence overly verbose loggers
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+
+# Call setup_logging() in your main entrypoint (main.py) to activate centralized logging.

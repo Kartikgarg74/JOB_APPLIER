@@ -80,3 +80,35 @@ Further instructions on running the agent will be provided in `apps/job-applier-
 ## Documentation
 
 Refer to the `docs/` directory for detailed architecture and API references.
+
+## Message Queue (Celery + Redis)
+
+### Running Redis (Docker Compose)
+```
+docker-compose up redis
+```
+
+### Running Celery Workers
+```
+celery -A packages.message_queue.celery_app worker --loglevel=info
+```
+
+### Running Celery Beat (for scheduled jobs)
+```
+celery -A packages.message_queue.celery_app beat --loglevel=info
+```
+
+### Running Flower (Monitoring Dashboard)
+```
+flower -A packages.message_queue.celery_app --port=5555
+```
+
+### Example: Sending a Task
+```python
+from packages.message_queue.tasks import send_email_task
+send_email_task.delay("user@example.com", "Welcome!", "Thanks for signing up.")
+```
+
+- Failed tasks are sent to the dead letter queue after max retries.
+- Rate limiting, prioritization, and retry logic are built-in.
+- Periodic jobs (e.g., file cleanup) are scheduled via Celery Beat.

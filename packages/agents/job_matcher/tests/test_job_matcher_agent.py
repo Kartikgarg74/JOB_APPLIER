@@ -11,12 +11,15 @@ print(f"Current Working Directory: {os.getcwd()}")
 print(f"Sys Path: {sys.path}")
 
 from packages.agents.job_matcher.job_matcher_agent import JobMatcherAgent
-from packages.common_types.common_types import JobListing, ResumeData
+
+class DummyDB:
+    pass
 
 class TestJobMatcherAgent(unittest.TestCase):
 
     def setUp(self):
-        self.agent = JobMatcherAgent()
+        self.agent = JobMatcherAgent(DummyDB())
+        self.agent.user_profile = {}  # Prevent DB call, tests set this directly
 
     def test_match_job_valid_input(self):
         processed_job_listings = [
@@ -89,6 +92,50 @@ class TestJobMatcherAgent(unittest.TestCase):
         self.assertIn('compatibility_score', matched_jobs[0])
         self.assertGreater(matched_jobs[0]['compatibility_score'], 0)
         self.assertLess(matched_jobs[0]['compatibility_score'], 100)
+
+    def test_salary_comparison(self):
+        # User prefers $80,000 - $120,000 (simulate via agent's user_profile)
+        self.agent.user_profile = {
+            "skills": ["Python", "Java"],
+            "experience": [{"years": 3}],
+            "education": [{"degree": "B.S. Computer Science"}],
+            "preferences": {
+                "job_locations": ["Remote"],
+                "salary_range": "$80,000 - $120,000",
+                "job_types": ["Full-time"]
+            },
+            "culture": {"work_life_balance": 0.8, "innovation": 0.7}
+        }
+        # Salary below, within, and above range
+        jobs = [
+            {"title": "Low Salary", "company": "A", "location": "Remote", "required_skills": ["Python"], "required_experience": 3, "required_education": ["B.S. Computer Science"], "salary": 0.3},  # $60k
+            {"title": "In Range", "company": "B", "location": "Remote", "required_skills": ["Python"], "required_experience": 3, "required_education": ["B.S. Computer Science"], "salary": 0.5},  # $100k
+            {"title": "Above Range", "company": "C", "location": "Remote", "required_skills": ["Python"], "required_experience": 3, "required_education": ["B.S. Computer Science"], "salary": 0.7},  # $140k
+        ]
+        results = self.agent.match_jobs(jobs)
+        titles = [job['title'] for job in results]
+        self.assertIn("In Range", titles)
+        self.assertIn("Above Range", titles)
+        # Low Salary may be filtered out if score < 50
+
+    def test_culture_matching(self):
+        self.agent.user_profile = {
+            "skills": ["Python"],
+            "experience": [{"years": 2}],
+            "education": [{"degree": "B.S. Computer Science"}],
+            "preferences": {"job_locations": ["Remote"], "salary_range": "$50,000 - $100,000", "job_types": ["Full-time"]},
+            "culture": {"work_life_balance": 1.0, "innovation": 0.5, "diversity": 0.8}
+        }
+        jobs = [
+            {"title": "Perfect Culture", "company": "A", "location": "Remote", "required_skills": ["Python"], "required_experience": 2, "required_education": ["B.S. Computer Science"], "salary": 0.5, "culture": {"work_life_balance": 1.0, "innovation": 0.5, "diversity": 0.8}},
+            {"title": "Partial Culture", "company": "B", "location": "Remote", "required_skills": ["Python"], "required_experience": 2, "required_education": ["B.S. Computer Science"], "salary": 0.5, "culture": {"work_life_balance": 0.7, "innovation": 0.7, "diversity": 0.6}},
+            {"title": "Poor Culture", "company": "C", "location": "Remote", "required_skills": ["Python"], "required_experience": 2, "required_education": ["B.S. Computer Science"], "salary": 0.5, "culture": {"work_life_balance": 0.0, "innovation": 1.0, "diversity": 0.0}},
+        ]
+        results = self.agent.match_jobs(jobs)
+        titles = [job['title'] for job in results]
+        self.assertIn("Perfect Culture", titles)
+        self.assertIn("Partial Culture", titles)
+        # Poor Culture may be filtered out if score < 50
 
 if __name__ == '__main__':
     unittest.main()

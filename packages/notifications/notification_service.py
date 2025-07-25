@@ -1,7 +1,6 @@
 import logging
 from typing import List, Dict, Any
 import aiohttp
-import json
 from sqlalchemy.orm import Session
 
 from packages.errors.custom_exceptions import NotificationError
@@ -125,7 +124,7 @@ class NotificationService:
         if self.in_app_notification_manager and self.db_session:
             try:
                 user_id = int(recipient) # Assuming recipient is user_id for in-app notifications
-                notification = self.in_app_notification_manager.create_notification(user_id, message, details)
+                self.in_app_notification_manager.create_notification(user_id, message, details)
                 logger.info(f"In-app notification created for user {recipient}: {message}")
                 return True
             except DatabaseError as e:

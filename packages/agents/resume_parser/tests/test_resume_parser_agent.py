@@ -1,85 +1,178 @@
 import unittest
+import os
 from unittest.mock import MagicMock, patch
-import logging
+import tempfile
 
 from packages.agents.resume_parser.resume_parser_agent import ResumeParserAgent
-from packages.common_types.common_types import ResumeData
-from packages.agents.resume_parser.resume_utils import extract_personal_details, extract_skills
-
-# Suppress logging during tests for cleaner output
-logging.disable(logging.CRITICAL)
 
 class TestResumeParserAgent(unittest.TestCase):
-
     def setUp(self):
         self.mock_db = MagicMock()
-        self.agent = ResumeParserAgent(self.mock_db)
+        self.parser = ResumeParserAgent(self.mock_db)
 
-    def test_parse_resume_empty_text(self):
-        # Test with empty resume text
-        result = self.agent.parse_resume("")
+        # Sample resume text for testing
+        self.sample_resume = """
+        John Doe
+        john.doe@example.com | (123) 456-7890
+        github.com/johndoe | linkedin.com/in/johndoe
+        San Francisco, CA
+
+        EDUCATION
+        Master of Science in Computer Science
+        Stanford University, 2018-2020
+        GPA: 3.8
+
+        Bachelor of Engineering in Computer Science
+        MIT, 2014-2018
+        GPA: 3.9
+
+        EXPERIENCE
+        Senior Software Engineer | TechCorp
+        January 2020 - Present
+        - Led development of microservices architecture using Python and Docker
+        - Implemented CI/CD pipeline reducing deployment time by 50%
+        - Mentored junior developers and conducted code reviews
+
+        Software Engineer | StartupCo
+        June 2018 - December 2019
+        - Developed RESTful APIs using Node.js and Express
+        - Optimized database queries improving response time by 40%
+
+        SKILLS
+        Languages: Python, JavaScript, Java, SQL
+        Frameworks: React, Node.js, Django, Flask
+        Tools: Git, Docker, Kubernetes, AWS
+
+        PROJECTS
+        AI-Powered Resume Parser
+        - Built using Python, spaCy, and FastAPI
+        - Implemented NLP for extracting structured data from resumes
+        - Achieved 95% accuracy in information extraction
+        """
+
+    def test_parse_resume_with_valid_text(self):
+        """Test parsing a valid resume text."""
+        result = self.parser.parse_resume(self.sample_resume)
+
+        self.assertIsNotNone(result)
+        self.assertIn('personal_details', result)
+        self.assertIn('education', result)
+        self.assertIn('experience', result)
+        self.assertIn('skills', result)
+        self.assertIn('projects', result)
+
+        # Verify personal details
+        personal_details = result['personal_details']
+        self.assertEqual(personal_details['name'], 'John Doe')
+        self.assertEqual(personal_details['email'], 'john.doe@example.com')
+        self.assertEqual(personal_details['phone'], '(123) 456-7890')
+        self.assertEqual(personal_details['github'], 'https://www.github.com/johndoe')
+        self.assertEqual(personal_details['linkedin'], 'https://www.linkedin.com/in/johndoe')
+        self.assertEqual(personal_details['location'], 'San Francisco')
+
+        # Verify education
+        education = result['education']
+        self.assertEqual(len(education), 2)
+        self.assertIn('Master of Science in Computer Science', education[0]['degree'])
+        self.assertIn('2020', education[0]['year'])
+        self.assertIn('3.8', education[0]['gpa'])
+
+        # Verify experience
+        experience = result['experience']
+        self.assertEqual(len(experience), 2)
+        self.assertIn('Senior Software Engineer', experience[0]['title_and_company'])
+        self.assertIn('Present', experience[0]['date_range'])
+        self.assertTrue(any('microservices' in resp for resp in experience[0]['responsibilities']))
+
+        # Verify skills
+        skills = result['skills']
+        expected_skills = {'Python', 'JavaScript', 'Java', 'SQL', 'React', 'Node.js', 'Django', 'Flask',
+                         'Git', 'Docker', 'Kubernetes', 'AWS'}
+        self.assertTrue(all(skill in skills for skill in expected_skills))
+
+        # Verify projects
+        projects = result['projects']
+        self.assertEqual(len(projects), 1)
+        self.assertEqual(projects[0]['name'], 'AI-Powered Resume Parser')
+        self.assertTrue(any('Python' in tech for tech in projects[0]['technologies']))
+        self.assertTrue(any('accuracy' in desc for desc in projects[0]['description']))
+
+    def test_parse_resume_with_empty_text(self):
+        """Test parsing empty resume text."""
+        result = self.parser.parse_resume("")
         self.assertIsNone(result)
 
-    def test_parse_resume_valid_text(self):
-        # Test with valid resume text
-        resume_text = "John Doe\njohn.doe@example.com\nSkills: Python, Java"
-        result = self.agent.parse_resume(resume_text)
-        self.assertIsInstance(result, dict)
-        self.assertIn('raw_text', result)
-        self.assertIn('personal_details', result)
-        self.assertIn('skills', result)
-        self.assertEqual(result['raw_text'], resume_text)
-        self.assertIn('Python', result['skills'])
-        self.assertIn('Java', result['skills'])
-        self.assertEqual(result['personal_details']['name'], 'John Doe')
-        self.assertEqual(result['personal_details']['email'], 'john.doe@example.com')
+    def test_parse_resume_with_minimal_text(self):
+        """Test parsing minimal resume text."""
+        minimal_resume = """
+        Jane Smith
+        jane.smith@email.com
+        """
+        result = self.parser.parse_resume(minimal_resume)
+        self.assertIsNotNone(result)
+        self.assertEqual(result['personal_details']['name'], 'Jane Smith')
+        self.assertEqual(result['personal_details']['email'], 'jane.smith@email.com')
 
-    @patch('packages.agents.resume_parser.resume_parser_agent.extract_personal_details')
-    @patch('packages.agents.resume_parser.resume_parser_agent.extract_skills')
-    def test_structure_resume_data(self, mock_extract_skills, mock_extract_personal_details):
-        # Mock utility functions
-        mock_extract_personal_details.return_value = {"name": "Jane Doe", "email": "jane.doe@example.com"}
-        mock_extract_skills.return_value = ["C++", "SQL"]
+    @patch('packages.agents.resume_parser.resume_parser_agent.extract_text_from_pdf')
+    def test_parse_resume_file_pdf(self, mock_extract_pdf):
+        """Test parsing a PDF resume file."""
+        # Set up mock to return sample resume text
+        mock_extract_pdf.return_value = self.sample_resume
 
-        raw_text = "Jane Doe\njane.doe@example.com\nExperience: Developed software\nSkills: C++, SQL"
-        result = self.agent._structure_resume_data(raw_text)
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix='.pdf', mode='wb', delete=False) as temp_file:
+            temp_file.write(b"Dummy PDF content")
+            temp_file_path = temp_file.name
 
-        self.assertIsInstance(result, dict)
-        self.assertIn('raw_text', result)
-        self.assertIn('personal_details', result)
-        self.assertIn('skills', result)
-        self.assertEqual(result['raw_text'], raw_text)
-        self.assertEqual(result['personal_details']['name'], 'Jane Doe')
-        self.assertIn('C++', result['skills'])
-        self.assertIn('SQL', result['skills'])
-        mock_extract_personal_details.assert_called_once_with(raw_text)
-        mock_extract_skills.assert_called_once_with(raw_text)
+        try:
+            # Test the function
+            result = self.parser.parse_resume_file(temp_file_path)
 
-    def test_extract_personal_details(self):
-        # Test the standalone utility function
-        text = "Name: Alice Smith\nEmail: alice@example.com\nPhone: 123-456-7890"
-        details = extract_personal_details(text)
-        self.assertEqual(details['name'], 'Alice Smith')
-        self.assertEqual(details['email'], 'alice@example.com')
-        self.assertEqual(details['phone'], '123-456-7890')
+            # Verify results
+            self.assertIsNotNone(result)
+            mock_extract_pdf.assert_called_once_with(temp_file_path)
+            self.assertEqual(result['personal_details']['name'], 'John Doe')
+            self.assertEqual(result['personal_details']['email'], 'john.doe@example.com')
+        finally:
+            # Clean up
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
 
-        text_no_email = "Name: Bob Johnson\nPhone: 987-654-3210"
-        details_no_email = extract_personal_details(text_no_email)
-        self.assertEqual(details_no_email['name'], 'Bob Johnson')
-        self.assertIsNone(details_no_email.get('email'))
+    @patch('packages.agents.resume_parser.resume_parser_agent.extract_text_from_docx')
+    def test_parse_resume_file_docx(self, mock_extract_docx):
+        """Test parsing a DOCX resume file."""
+        # Set up mock to return sample resume text
+        mock_extract_docx.return_value = self.sample_resume
 
-    def test_extract_skills(self):
-        # Test the standalone utility function
-        text = "Skills: Python, JavaScript, HTML, CSS\nExperience: Developed web apps."
-        skills = extract_skills(text)
-        self.assertIn('Python', skills)
-        self.assertIn('JavaScript', skills)
-        self.assertIn('HTML', skills)
-        self.assertIn('CSS', skills)
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(suffix='.docx', mode='wb', delete=False) as temp_file:
+            temp_file.write(b"Dummy DOCX content")
+            temp_file_path = temp_file.name
 
-        text_no_skills = "Just some random text without a skills section."
-        skills_no_skills = extract_skills(text_no_skills)
-        self.assertEqual(skills_no_skills, [])
+        try:
+            # Test the function
+            result = self.parser.parse_resume_file(temp_file_path)
+
+            # Verify results
+            self.assertIsNotNone(result)
+            mock_extract_docx.assert_called_once_with(temp_file_path)
+            self.assertEqual(result['personal_details']['name'], 'John Doe')
+            self.assertEqual(result['personal_details']['email'], 'john.doe@example.com')
+        finally:
+            # Clean up
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+
+    def test_parse_resume_file_unsupported_format(self):
+        """Test parsing an unsupported file format."""
+        with tempfile.NamedTemporaryFile(suffix='.txt') as temp_file:
+            result = self.parser.parse_resume_file(temp_file.name)
+        self.assertIsNone(result)
+
+    def test_parse_resume_file_nonexistent(self):
+        """Test parsing a nonexistent file."""
+        result = self.parser.parse_resume_file('nonexistent.pdf')
+        self.assertIsNone(result)
 
 if __name__ == '__main__':
     unittest.main()

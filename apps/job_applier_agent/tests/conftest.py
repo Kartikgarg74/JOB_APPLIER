@@ -13,7 +13,6 @@ sys.path.insert(0, project_root)
 
 from src.main import app
 from packages.database.config import Base, get_database_url
-from packages.database.models import User
 
 # Use a separate test database
 os.environ["DATABASE_NAME"] = "test_db.db"

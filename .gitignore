@@ -1,14 +1,76 @@
-/node_modules
-/packages/agents/application_automation/node_modules
-/packages/agents/ats_scorer/node_modules
+# Node.js dependencies and build artifacts
+node_modules/
+**/node_modules/
+.next/
+.next/cache/
+
+# Python artifacts
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+.env.local
+*.env
+*.env.*
 client_secrets.json
 encryption.key
-applications.db
-*.lock
-*.db
 /apps/job_applier_agent/encryption.key
 /apps/job_applier_agent/client_secrets.json
-*/__pycache__
-.pytest_cache
-.venv
-apps/dashboard/.env.local
+
+# Databases and local data
+*.db
+*.sqlite3
+applications.db
+users.db
+output/
+
+# Lock files
+*.lock
+yarn.lock
+package-lock.json
+poetry.lock
+Pipfile.lock
+
+# Logs and coverage
+*.log
+logs/
+coverage/
+coverage.*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Docker
+**/data/
+**/output/
+
+# Test and build artifacts
+.pytest_cache/
+**/.pytest_cache/
+/build/
+/dist/
+
+# Misc
+*.bak
+*.swp
+
+# Ignore compiled frontend assets
+apps/dashboard/public/sw.js
+apps/dashboard/public/workbox-*.js
+
+# Ignore generated PWA files
+apps/dashboard/public/manifest.json
+apps/dashboard/public/worker-*.js
+
+# Ignore local config and secrets
+user_profile.json

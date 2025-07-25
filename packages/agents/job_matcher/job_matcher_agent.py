@@ -8,6 +8,7 @@ from packages.agents.job_matcher.job_matcher_utils import (
     calculate_education_score,
     calculate_preference_score,
     calculate_opportunity_score,
+    calculate_culture_score,  # NEW
 )
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class JobMatcherAgent:
     ) -> List[Dict[str, Any]]:
         """
         [CONTEXT] Compares user profile with job listings to calculate compatibility scores.
-        [PURPOSE] Identifies top 3-5 job matches based on skills, qualifications, and opportunity.
+        [PURPOSE] Identifies top 3-5 job matches based on skills, qualifications, preferences, and company culture.
         """
         self.logger.info(
             f"Starting job matching for {len(processed_job_listings)} listings"
@@ -55,12 +56,14 @@ class JobMatcherAgent:
         user_experience = sum(int(exp.get("years", 0)) for exp in self.user_profile.get("experience", []))
         user_education = set(edu.get("degree") for edu in self.user_profile.get("education", []) if edu.get("degree"))
         user_preferences = self.user_profile.get("preferences", {})
+        user_culture = self.user_profile.get("culture", {})  # NEW: expects dict of culture prefs
 
         for job in processed_job_listings:
             job["match_details"] = {
                 "missing_skills": [],
                 "missing_qualifications": [],
                 "opportunity_score": 0,
+                "culture_score": 0,  # NEW
             }
 
             # Initialize score components
@@ -69,6 +72,7 @@ class JobMatcherAgent:
             education_score = 0
             preference_score = 0
             opportunity_score = 0
+            culture_score = 0  # NEW
 
             # 1. Skill Matching (50% of total score)
             job_skills = set(job.get("required_skills", []))
@@ -90,20 +94,24 @@ class JobMatcherAgent:
             # 4. Preference Matching (15% of total score)
             preference_score = calculate_preference_score(user_preferences, job)
 
-            # 5. Opportunity Score (separate metric)
-            opportunity_score = calculate_opportunity_score(job)
+            # 5. Company Culture Matching (10 points out of 100)
+            job_culture = job.get("culture", {})  # expects dict of culture attributes
+            culture_score = calculate_culture_score(user_culture, job_culture)
+            job["match_details"]["culture_score"] = culture_score
 
+            # 6. Opportunity Score (separate metric)
+            opportunity_score = calculate_opportunity_score(job)
             job["match_details"]["opportunity_score"] = opportunity_score
 
             # Calculate total compatibility score (0-100)
             total_score = (
-                skill_score + experience_score + education_score + preference_score
+                skill_score + experience_score + education_score + preference_score + culture_score
             )
             job["compatibility_score"] = round(total_score)
 
             matched_jobs.append(job)
             self.logger.debug(
-                f"Scored job: {job.get('title')} - Compatibility: {job['compatibility_score']}, Opportunity: {opportunity_score}"
+                f"Scored job: {job.get('title')} - Compatibility: {job['compatibility_score']}, Opportunity: {opportunity_score}, Culture: {culture_score}"
             )
 
         # Filter and rank jobs
