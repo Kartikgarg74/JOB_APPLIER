@@ -43,3 +43,4 @@ black==24.3.0
 pip-tools==7.4.1
 psycopg2-binary==2.9.9
 spacy==3.7.2
+nltk==3.8.1
