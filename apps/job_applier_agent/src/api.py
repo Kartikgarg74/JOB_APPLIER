@@ -26,7 +26,7 @@ from packages.message_queue.tasks import (
     calculate_ats_score_task,
     run_unicorn_agent_task,
 )
-from auth.auth_api import router as auth_router
+from .auth.auth_api import router as auth_router
 
 from sqlalchemy.orm import Session
 from packages.agents.unicorn_agent.unicorn_agent import UnicornAgent
@@ -993,3 +993,6 @@ async def location_autocomplete(request: LocationAutocompleteRequest):
         f"{request.query} Road, City, Country"
     ]
     return LocationAutocompleteResponse(suggestions=suggestions)
+
+# Export the router for use in main.py
+router = v1_router

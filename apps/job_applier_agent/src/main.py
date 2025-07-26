@@ -18,7 +18,8 @@ from contextlib import asynccontextmanager
 
 from packages.utilities.logging_utils import setup_logging
 
-from api import app as job_applier_api_app
+# Import the API router from the local api.py file
+from .api import router as job_applier_api_app
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
