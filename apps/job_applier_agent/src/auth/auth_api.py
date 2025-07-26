@@ -24,7 +24,7 @@ import time
 
 from packages.database.config import SessionLocal
 from packages.database.models import User
-from packages.config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from packages.config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REDIS_URL, REDIS_TOKEN
 from .schemas import UserCreate, UserLogin, UserResponse, GoogleAuthCallback
 from packages.utilities.email_utils import send_email
 import secrets
@@ -49,8 +49,6 @@ BLOCK_THRESHOLD = 5
 BLOCK_DURATION = 900  # 15 minutes
 
 # Redis connection for user activity tracking (adjust host/port as needed)
-REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
-REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
 redis_client = redis.Redis.from_url(REDIS_URL, password=REDIS_TOKEN)
 dau_gauge = Gauge('active_users_daily', 'Number of unique users active today')
 wau_gauge = Gauge('active_users_weekly', 'Number of unique users active this week')
