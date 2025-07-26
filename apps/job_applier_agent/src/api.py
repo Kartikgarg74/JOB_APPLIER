@@ -40,6 +40,7 @@ from prometheus_client import Counter
 from packages.agents.job_scraper.job_scraper_agent import JobScraperAgent
 from packages.utilities.parsers.resume_parser import extract_text_from_resume
 from fastapi.responses import JSONResponse
+from fastapi import APIRouter
 
 # Redis cache setup
 REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
@@ -70,7 +71,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-v1_router = FastAPI(prefix="/v1")
+v1_router = APIRouter(prefix="/v1")
 
 v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 
