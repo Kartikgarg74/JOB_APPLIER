@@ -1,3 +1,5 @@
+import { API_CONFIG, getServiceUrl } from './config';
+
 // Types for ATS API
 export interface AtsSuggestion {
   type: 'success' | 'warning' | 'info';
@@ -29,12 +31,47 @@ export async function fetchAtsScore(
   const formData = new FormData();
   formData.append("resume_file", resumeFile);
   formData.append("job_description", jobDescription);
-  const result = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/v1"}/ats-score`, {
+
+  const url = getServiceUrl('ATS_SERVICE', API_CONFIG.ENDPOINTS.ATS_SCORE_FILE);
+
+  const result = await fetch(url, {
     method: "POST",
     body: formData,
   });
+
   if (!result.ok) {
     let errMsg = "Failed to get ATS score";
+    try {
+      const err = await result.json();
+      errMsg = err.message || errMsg;
+    } catch {}
+    throw new Error(errMsg);
+  }
+  return result.json();
+}
+
+// API call for job search
+export async function searchJobs(
+  query: string,
+  location: string = "",
+  numResults: number = 10,
+  sources: string[] = ["indeed", "linkedin", "glassdoor", "company"]
+): Promise<any> {
+  const formData = new FormData();
+  formData.append("query", query);
+  formData.append("location", location);
+  formData.append("num_results", numResults.toString());
+  sources.forEach(source => formData.append("sources", source));
+
+  const url = getServiceUrl('ATS_SERVICE', API_CONFIG.ENDPOINTS.SEARCH_JOBS);
+
+  const result = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!result.ok) {
+    let errMsg = "Failed to search jobs";
     try {
       const err = await result.json();
       errMsg = err.message || errMsg;
