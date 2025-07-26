@@ -13,7 +13,7 @@ import json
 from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
 
-from src.agent_api import router as agent_router
+from .agent_api import router as agent_router
 
 setup_logging()
 
