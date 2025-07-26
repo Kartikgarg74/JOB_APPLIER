@@ -32,7 +32,7 @@ from packages.database.models import InAppNotification
 from fastapi.security import OAuth2PasswordBearer
 from packages.database.models import Skill, Project, Experience, Education, JobPreference
 from packages.utilities.encryption_utils import mask_email, mask_phone
-from apps.job_applier_agent.src.main import signup_counter, login_counter
+from apps.job_applier_agent.src.metrics import signup_counter, login_counter
 from prometheus_client import Gauge
 import redis
 

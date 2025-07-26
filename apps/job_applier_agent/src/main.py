@@ -17,6 +17,10 @@ from fastapi import Response as FastAPIResponse
 from contextlib import asynccontextmanager
 
 from packages.utilities.logging_utils import setup_logging
+from apps.job_applier_agent.src.metrics import (
+    signup_counter, login_counter, job_apply_counter, profile_update_counter,
+    uptime_gauge, error_counter, request_count, request_latency
+)
 
 # Import the API router from the local api.py file
 from .api import router as job_applier_api_app
@@ -71,16 +75,6 @@ app.add_middleware(PerformanceLoggingMiddleware)
 
 
 # Prometheus metrics
-signup_counter = Counter('signups_total', 'Total user signups')
-login_counter = Counter('logins_total', 'Total user logins')
-job_apply_counter = Counter('job_applications_total', 'Total job applications')
-profile_update_counter = Counter('profile_updates_total', 'Total profile updates')
-uptime_gauge = Gauge('app_uptime_seconds', 'Application uptime in seconds')
-error_counter = Counter('errors_total', 'Total error responses')
-startup_time = time.time()
-request_count = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
-request_latency = Histogram('api_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
-
 
 
 @app.get("/metrics")
