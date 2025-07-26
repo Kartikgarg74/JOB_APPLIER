@@ -7,7 +7,7 @@ from packages.database.models import User
 from packages.database.config import SessionLocal
 from packages.errors.custom_exceptions import JobApplierException
 from passlib.context import CryptContext
-from ..auth.auth_api import get_current_user
+from apps.job_applier_agent.src.auth.auth_api import get_current_user
 from .schemas import UserResponse, UserUpdate
 
 router = APIRouter()
