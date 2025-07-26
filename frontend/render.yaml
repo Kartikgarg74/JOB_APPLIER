@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: job-applier-frontend
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_JOB_APPLIER_AGENT_URL
+        value: https://job-applier-job-applier.onrender.com
+      - key: NEXT_PUBLIC_ATS_SERVICE_URL
+        value: https://job-applier-ats-ervice.onrender.com
+      - key: NEXT_PUBLIC_USER_SERVICE_URL
+        value: https://job-applier-user-services.onrender.com
+      - key: NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL
+        value: https://job-applier-agent-orchestration-service.onrender.com
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://job-applier-job-applier.onrender.com

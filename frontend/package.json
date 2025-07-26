@@ -1,12 +1,17 @@
 {
-  "name": "my-v0-project",
+  "name": "job-applier-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start -p 3001"
+    "start": "next start -p $PORT",
+    "export": "next build && next export",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
