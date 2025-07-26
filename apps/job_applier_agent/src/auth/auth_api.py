@@ -24,7 +24,7 @@ import time
 
 from packages.database.config import SessionLocal
 from packages.database.models import User
-from packages.config.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from packages.config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 from .schemas import UserCreate, UserLogin, UserResponse, GoogleAuthCallback
 from packages.utilities.email_utils import send_email
 import secrets
