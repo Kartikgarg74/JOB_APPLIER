@@ -138,10 +138,7 @@ class UnicornAgentRequest(BaseModel):
 
 class UnicornAgentResponse(BaseModel):
     status: str = Field(..., example="processing")
-    response_model=UnicornAgent,
-    summary="Apply for Job using Unicorn Agent",
-    description="Initiates the job application workflow using the Unicorn Agent.",
-    dependencies=[Depends(RateLimiter(times=1, seconds=5))]
+    # Add other response fields as needed
 async def apply_job(
     request: UnicornAgentRequest,
     notification_service: NotificationService = Depends(get_notification_service),
