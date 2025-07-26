@@ -44,6 +44,10 @@ fastapi-limiter==0.1.6
 email-validator==2.2.0
 oauthlib==3.2.2
 
+# NLP libraries - Required for resume parsing
+spacy==3.8.7
+nltk==3.8.1
+
 # Additional dependencies for compatibility
 amqp==5.3.1
 billiard==4.2.1
@@ -57,6 +61,3 @@ wcwidth==0.2.13
 
 # Stripe for monetization
 stripe==8.10.0
-
-# Note: NLP libraries (spacy, nltk) are removed to avoid dependency conflicts
-# They can be installed separately if needed for advanced NLP features

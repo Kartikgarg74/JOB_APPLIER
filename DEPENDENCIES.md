@@ -1,12 +1,12 @@
 # Dependency Management Guide
 
 ## Overview
-This project uses a simplified dependency management approach to avoid complex version conflicts while maintaining functionality.
+This project uses a comprehensive dependency management approach that includes all required NLP libraries for resume parsing functionality.
 
 ## Core Dependencies
 
 ### Main Requirements (`requirements.txt`)
-The main requirements file contains all essential dependencies for the core application:
+The main requirements file contains all essential dependencies including NLP libraries:
 
 ```bash
 pip install -r requirements.txt
@@ -15,23 +15,23 @@ pip install -r requirements.txt
 **Key Changes Made:**
 - ✅ **PyJWT**: Updated from `2.8.0` to `2.9.0` for Redis compatibility
 - ✅ **Redis**: Downgraded from `5.3.1` to `5.0.1` for better compatibility
-- ✅ **Removed**: Complex NLP libraries (spacy, nltk) to avoid conflicts
-- ✅ **Simplified**: Removed unnecessary transitive dependencies
+- ✅ **spacy**: Updated to `3.8.7` for Python 3.12 compatibility
+- ✅ **nltk**: Set to `3.8.1` for NLP functionality
+- ✅ **Stripe**: Added `8.10.0` for monetization support
 
-### Optional NLP Dependencies (`requirements-nlp.txt`)
-For advanced NLP features, install separately:
+### Optional Advanced NLP Dependencies (`requirements-nlp.txt`)
+For additional NLP features beyond the core requirements:
 
 ```bash
 pip install -r requirements-nlp.txt
 ```
 
 **Includes:**
-- spacy==3.7.2
-- nltk==3.8.1
 - textblob==0.17.1
 - scikit-learn==1.4.0
 - sentence-transformers==2.5.1
 - transformers==4.38.2
+- torch==2.2.0
 
 ## Service-Specific Requirements
 
@@ -51,21 +51,21 @@ Each service has its own requirements.txt file that matches the main requirement
 
 ### 2. spacy vs fastapi-cli Conflict
 **Problem**: `spacy==3.7.4` required `typer<0.10.0` but `fastapi-cli` required `typer>=0.12.3`
-**Solution**: Removed spacy from main requirements and created separate `requirements-nlp.txt`
+**Solution**: Updated spacy to `3.8.7` which uses `typer<1.0.0,>=0.3.0` (compatible with fastapi-cli)
 
-### 3. Complex Dependency Tree
-**Problem**: spacy has a very deep dependency tree causing pip resolution to exceed maximum depth
-**Solution**: Simplified requirements by removing complex NLP libraries
+### 3. Python 3.12 Compatibility
+**Problem**: Older spacy versions had compilation issues with Python 3.12
+**Solution**: Used spacy `3.8.7` which has pre-compiled wheels for Python 3.12
 
 ## Installation Instructions
 
 ### For Basic Setup (Recommended)
 ```bash
-# Install core dependencies
+# Install all dependencies including NLP libraries
 pip install -r requirements.txt
 
 # Verify installation
-python -c "import fastapi, sqlalchemy, celery, redis; print('Core dependencies installed successfully!')"
+python -c "import fastapi, sqlalchemy, celery, redis, spacy, nltk; print('All dependencies installed successfully!')"
 ```
 
 ### For Advanced NLP Features
@@ -73,7 +73,7 @@ python -c "import fastapi, sqlalchemy, celery, redis; print('Core dependencies i
 # Install core dependencies first
 pip install -r requirements.txt
 
-# Then install NLP dependencies
+# Then install additional NLP dependencies
 pip install -r requirements-nlp.txt
 
 # Download spacy models (optional)
@@ -116,7 +116,7 @@ MAILGUN_API_KEY=...
 ### Common Issues
 
 1. **ImportError: No module named 'spacy'**
-   - Solution: Install NLP dependencies: `pip install -r requirements-nlp.txt`
+   - Solution: Install dependencies: `pip install -r requirements.txt`
 
 2. **Redis connection errors**
    - Solution: Ensure Redis is running and `REDIS_URL` is set correctly
@@ -126,6 +126,9 @@ MAILGUN_API_KEY=...
 
 4. **Stripe billing errors**
    - Solution: Verify `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` are set
+
+5. **spacy model download errors**
+   - Solution: Run `python -m spacy download en_core_web_sm`
 
 ### Dependency Conflicts
 
@@ -142,7 +145,7 @@ If you encounter dependency conflicts:
    pip install -r requirements.txt
    ```
 
-3. **For NLP features**:
+3. **For additional NLP features**:
    ```bash
    pip install -r requirements-nlp.txt
    ```
@@ -177,6 +180,8 @@ python apps/job_applier_agent/src/main.py
 | Redis | 5.0.1 | Python 3.8+ |
 | Celery | 5.3.6 | Python 3.8+ |
 | PyJWT | 2.9.0 | Python 3.6+ |
+| spacy | 3.8.7 | Python 3.8+ |
+| nltk | 3.8.1 | Python 3.7+ |
 | Stripe | 8.10.0 | Python 3.7+ |
 
 ## Security Notes
@@ -191,6 +196,7 @@ python apps/job_applier_agent/src/main.py
 - Redis is used for caching and message queuing
 - PostgreSQL is used for persistent data storage
 - Celery workers handle background tasks
+- spacy provides efficient NLP processing
 - Consider using connection pooling for database connections
 
 ## Monitoring
@@ -208,3 +214,22 @@ For dependency-related issues:
 2. Review the error messages carefully
 3. Try the troubleshooting steps above
 4. Create an issue with detailed error information
+
+## NLP Features
+
+The project includes comprehensive NLP capabilities:
+
+### Resume Parsing
+- **spacy**: Named Entity Recognition (NER) for extracting names, companies, dates
+- **nltk**: Tokenization, part-of-speech tagging, chunking
+- **Custom extraction**: Skills, experience, education, certifications
+
+### ATS Scoring
+- Keyword matching and scoring
+- Skills alignment analysis
+- Experience relevance scoring
+
+### Job Matching
+- Semantic similarity using embeddings
+- Skills-based matching
+- Experience level alignment
