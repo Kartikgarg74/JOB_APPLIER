@@ -18,6 +18,7 @@ pip install -r requirements.txt
 - ✅ **spacy**: Updated to `3.8.7` for Python 3.12 compatibility
 - ✅ **nltk**: Set to `3.8.1` for NLP functionality
 - ✅ **Stripe**: Added `8.10.0` for monetization support
+- ✅ **beautifulsoup4**: Added `4.12.3` for web scraping functionality
 
 ### Optional Advanced NLP Dependencies (`requirements-nlp.txt`)
 For additional NLP features beyond the core requirements:
@@ -183,6 +184,7 @@ python apps/job_applier_agent/src/main.py
 | spacy | 3.8.7 | Python 3.8+ |
 | nltk | 3.8.1 | Python 3.7+ |
 | Stripe | 8.10.0 | Python 3.7+ |
+| beautifulsoup4 | 4.12.3 | Python 3.7+ |
 
 ## Security Notes
 
@@ -230,6 +232,12 @@ The project includes comprehensive NLP capabilities:
 - Experience relevance scoring
 
 ### Job Matching
-- Semantic similarity using embeddings
-- Skills-based matching
-- Experience level alignment
+ - Semantic similarity using embeddings
+ - Skills-based matching
+ - Experience level alignment
+
+### Web Scraping
+ - **beautifulsoup4**: HTML parsing for job scraping
+ - **requests**: HTTP requests for web scraping
+ - Rate limiting and proxy rotation
+ - Robots.txt compliance checking

@@ -910,6 +910,8 @@ async def track_analytics_event(event: AnalyticsEventRequest):
         "user_id": event.user_id,
         "properties": event.properties,
     }
+    # Ensure output directory exists
+    os.makedirs("output", exist_ok=True)
     with open("output/analytics_events.log", "a") as f:
         f.write(json.dumps(log_entry) + "\n")
     return AnalyticsEventResponse(status="success", message="Event logged.")

@@ -61,3 +61,6 @@ wcwidth==0.2.13
 
 # Stripe for monetization
 stripe==8.10.0
+
+# Web scraping dependencies
+beautifulsoup4==4.12.3
