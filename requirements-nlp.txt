@@ -1,0 +1,25 @@
+# NLP libraries - Optional dependencies
+# Install with: pip install -r requirements-nlp.txt
+
+# Core NLP libraries
+spacy==3.7.4
+nltk==3.8.1
+
+# Additional NLP utilities
+textblob==0.17.1
+pattern==3.6
+polyglot==16.7.4
+langdetect==1.0.9
+
+# Machine learning for NLP
+scikit-learn==1.4.0
+numpy==1.26.4
+pandas==2.2.0
+
+# Vector embeddings
+sentence-transformers==2.5.1
+transformers==4.38.2
+torch==2.2.0
+
+# Note: These are optional and can be installed separately
+# if you need advanced NLP capabilities
