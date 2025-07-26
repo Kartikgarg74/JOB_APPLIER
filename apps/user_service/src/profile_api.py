@@ -37,6 +37,23 @@ def get_notification_service() -> NotificationService:
 
 
 # Pydantic models for request and response
+class SkillCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    proficiency: Optional[str] = Field(None, max_length=50)
+
+
+class SkillResponse(SkillCreate):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+    technologies: Optional[str] = Field(
+        None, max_length=500
+    )  # Consider a List[str] and handle serialization
+    url: Optional[str] = Field(None, max_length=255)
+
+
 class UserProfileUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     address: Optional[str] = Field(None, max_length=255)
@@ -109,23 +126,6 @@ class ExperienceUpdate(BaseModel):
 class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)
-
-
-class SkillCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
-    proficiency: Optional[str] = Field(None, max_length=50)
-
-
-class SkillResponse(SkillCreate):
-    id: int
-    user_id: int
-
-    class Config:
-        from_attributes = True
-    technologies: Optional[str] = Field(
-        None, max_length=500
-    )  # Consider a List[str] and handle serialization
-    url: Optional[str] = Field(None, max_length=255)
 
 
 class ProjectResponse(ProjectCreate):
