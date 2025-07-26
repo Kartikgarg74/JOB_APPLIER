@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, FileText, Link, CheckCircle, AlertTriangle, TrendingUp, Target, Zap, Download, X } from "lucide-react"
+import { Upload, FileText, Link, CheckCircle, AlertTriangle, TrendingUp, Target, Zap, Download, X, RefreshCw, Eye, Info } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApiServices } from '@/lib/api-context';
@@ -168,28 +168,47 @@ export function ATSChecker() {
   }, []);
 
   const handleAnalyze = useCallback(async () => {
-    if (!resumeFile || !jobDescription) {
+    if (!resumeFile || !jobDescription.trim()) {
       setError("Please upload a resume and provide a job description.");
       return;
     }
+
     setIsAnalyzing(true);
     setError(null);
-    setShowResults(false);
     setAtsResults(null);
+
     try {
       const data = await fetchAtsScore(resumeFile, jobDescription);
       setAtsResults(data);
-      setShowResults(true);
-    } catch (e) {
-      if (e instanceof Error) {
-        setError(e.message || "An error occurred");
+      console.log("ATS Analysis completed:", data);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to analyze resume. Please try again.");
       } else {
-        setError("An unknown error occurred");
+        setError("An unknown error occurred during analysis.");
       }
+      console.error("ATS Analysis error:", err);
     } finally {
       setIsAnalyzing(false);
     }
   }, [resumeFile, jobDescription, fetchAtsScore]);
+
+  const handleStartNewScan = useCallback(() => {
+    setResumeFile(null);
+    setJobDescription("");
+    setAtsResults(null);
+    setError(null);
+  }, []);
+
+  const handleCheckResults = useCallback(() => {
+    if (atsResults) {
+      // Scroll to results section
+      const resultsElement = document.getElementById('ats-results');
+      if (resultsElement) {
+        resultsElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [atsResults]);
 
   if (showResults) {
     return (
@@ -205,143 +224,130 @@ export function ATSChecker() {
           </Button>
         </div>
 
-        {/* Score Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          <Card className="md:col-span-2">
-            <CardHeader className="text-center">
-              <CardTitle>Overall ATS Score</CardTitle>
-              <CardDescription>Based on industry standards</CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div
-                className={`text-4xl sm:text-6xl font-bold mb-2 bg-gradient-to-r ${getScoreGradient(atsResults?.score ?? 0)} bg-clip-text text-transparent`}
-              >
-                {atsResults?.score ?? 0}
-              </div>
-              <Badge
-                className={`text-base sm:text-lg px-4 py-1 ${getScoreColor(atsResults?.score ?? 0)} bg-transparent border-current`}
-              >
-                {atsResults?.grade ?? "N/A"}
-              </Badge>
-              <Progress value={atsResults?.score ?? 0} className="mt-4 h-3" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Skills Match</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold mb-2">{atsResults?.skillsMatch ?? 0}%</div>
-              <Progress value={atsResults?.skillsMatch ?? 0} className="h-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Keywords</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl sm:text-3xl font-bold mb-2">{atsResults?.keywordsMatch ?? 0}%</div>
-              <Progress value={atsResults?.keywordsMatch ?? 0} className="h-2" />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Detailed Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Suggestions */}
-          <Card>
+        {/* Results Section */}
+        {atsResults && (
+          <Card id="ats-results" className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="w-5 h-5" />
-                Improvement Suggestions
+                ATS Analysis Results
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {atsResults?.suggestions?.map((suggestion: AtsResults['suggestions'][number], index: number) => (
-                <Alert
-                  key={index}
-                  className={
-                    suggestion.type === "success"
-                      ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
-                      : suggestion.type === "warning"
-                        ? "border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
-                        : "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-                  }
-                >
-                  <div className="flex items-start gap-3">
-                    {suggestion.type === "success" ? (
-                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-                    ) : suggestion.type === "warning" ? (
-                      <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                    ) : (
-                      <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5" />
-                    )}
-                    <div className="flex-1">
-                      <h4 className="font-semibold mb-1 text-base sm:text-lg">{suggestion.title}</h4>
-                      <AlertDescription className="text-xs sm:text-sm">{suggestion.description}</AlertDescription>
-                      <Badge variant="outline" className="mt-2 text-xs sm:text-sm">
-                        {suggestion.impact} impact
-                      </Badge>
-                    </div>
+            <CardContent className="space-y-6">
+              {/* Score Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 rounded-lg">
+                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                    {atsResults.score || 0}%
                   </div>
-                </Alert>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Skills Analysis */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="w-5 h-5" />
-                Skills Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {atsResults?.skillsAnalysis?.map((skill: AtsResults['skillsAnalysis'][number], index: number) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{skill.skill}</span>
-                      {skill.required && (
-                        <Badge variant="destructive" className="text-xs">
-                          Required
-                        </Badge>
-                      )}
-                    </div>
-                    <span className={`font-semibold ${getScoreColor(skill.match)}`}>{skill.match}%</span>
-                  </div>
-                  <Progress value={skill.match} className="h-2" />
+                  <div className="text-sm text-blue-600 font-medium">Overall Score</div>
                 </div>
-              ))}
+                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 rounded-lg">
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    {atsResults.skillsMatch || 0}%
+                  </div>
+                  <div className="text-sm text-green-600 font-medium">Skills Match</div>
+                </div>
+                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900 rounded-lg">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">
+                    {atsResults.keywordsMatch || 0}%
+                  </div>
+                  <div className="text-sm text-purple-600 font-medium">Keywords Match</div>
+                </div>
+              </div>
+
+              {/* Grade */}
+              <div className="text-center">
+                <Badge
+                  variant={atsResults.grade === 'A' ? 'default' : atsResults.grade === 'B' ? 'secondary' : 'destructive'}
+                  className="text-lg px-4 py-2"
+                >
+                  Grade: {atsResults.grade || 'N/A'}
+                </Badge>
+              </div>
+
+              {/* Suggestions */}
+              {atsResults.suggestions && atsResults.suggestions.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Recommendations</h3>
+                  <div className="space-y-3">
+                    {atsResults.suggestions.map((suggestion, index) => (
+                      <Alert key={index} className={`border-l-4 ${
+                        suggestion.type === 'success' ? 'border-green-500 bg-green-50' :
+                        suggestion.type === 'warning' ? 'border-yellow-500 bg-yellow-50' :
+                        'border-blue-500 bg-blue-50'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          {suggestion.type === 'success' ? (
+                            <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                          ) : suggestion.type === 'warning' ? (
+                            <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                          ) : (
+                            <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <div className="font-medium mb-1">{suggestion.title}</div>
+                            <AlertDescription className="text-sm">
+                              {suggestion.description}
+                            </AlertDescription>
+                            {suggestion.impact && (
+                              <Badge variant="outline" className="mt-2 text-xs">
+                                {suggestion.impact} impact
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </Alert>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Skills Analysis */}
+              {atsResults.skillsAnalysis && atsResults.skillsAnalysis.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Skills Analysis</h3>
+                  <div className="grid gap-3">
+                    {atsResults.skillsAnalysis.map((skill, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium">{skill.skill}</span>
+                          <Badge variant={skill.required ? "default" : "secondary"}>
+                            {skill.required ? "Required" : "Optional"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full ${
+                                skill.match >= 80 ? 'bg-green-500' :
+                                skill.match >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                              }`}
+                              style={{ width: `${skill.match}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">{skill.match}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-center">
+                <Button onClick={handleStartNewScan} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Start New Scan
+                </Button>
+                <Button onClick={handleCheckResults}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  View Detailed Report
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Action Buttons */}
-        <Card>
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 justify-center">
-              <Button
-                size="lg"
-                className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-              >
-                <Zap className="w-5 h-5 mr-2" />
-                Auto-Improve Resume
-              </Button>
-              <Button size="lg" variant="outline">
-                <Download className="w-5 h-5 mr-2" />
-                Download Report
-              </Button>
-              <Button size="lg" variant="outline">
-                <FileText className="w-5 h-5 mr-2" />
-                Edit Resume
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        )}
       </div>
     )
   }

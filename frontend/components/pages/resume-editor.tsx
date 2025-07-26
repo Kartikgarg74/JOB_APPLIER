@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useCallback, useRef } from "react"
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -197,13 +197,34 @@ class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void;
 
 export function ResumeEditor() {
   const [activeSection, setActiveSection] = useState("header")
-  const [atsScore, setAtsScore] = useState(87)
+  const [atsScore, setAtsScore] = useState(0)
   const [showAISuggestions, setShowAISuggestions] = useState(true)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Real user data state
+  const [userProfile, setUserProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    location: "",
+    linkedin: "",
+    website: "",
+    summary: "",
+    jobTitle: "",
+    experience: [] as any[],
+    skills: [] as string[],
+    education: [] as string[],
+    projects: [] as string[],
+    certifications: [] as string[],
+    awards: [] as string[]
+  });
 
   // Add state for dynamic sections
   const [educationEntries, setEducationEntries] = useState<string[]>([]);
@@ -212,18 +233,99 @@ export function ResumeEditor() {
   const [awardsEntries, setAwardsEntries] = useState<string[]>([]);
   const [newEntry, setNewEntry] = useState("");
 
-  // Analytics hooks
-  const handleOptimize = useCallback(() => {
-    setIsOptimizing(true)
-    console.log("Analytics: Optimize resume")
-    setTimeout(() => {
-      setAtsScore(95)
-      setIsOptimizing(false)
-      // Confetti animation would trigger here
-    }, 2000)
+  const { uploadResume, getUserProfile, updateUserProfile } = useApiServices();
+
+  // Load user profile data
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const profile = await getUserProfile();
+        if (profile) {
+          // Map the API response to our local state
+          setUserProfile(prev => ({
+            ...prev,
+            phone: profile.phone || "",
+            location: profile.address || "",
+            linkedin: profile.linkedin_profile || "",
+            website: profile.personal_website || "",
+            skills: profile.skills?.map((s: any) => s.name || s) || []
+          }));
+          // For now, we'll use empty arrays for sections not in the API
+          setEducationEntries([]);
+          setProjectsEntries([]);
+          setCertificationsEntries([]);
+          setAwardsEntries([]);
+        }
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    };
+    loadUserProfile();
+  }, [getUserProfile]);
+
+  const handleOptimize = useCallback(async () => {
+    setIsOptimizing(true);
+    setError(null);
+    try {
+      // This would call the backend optimization service
+      console.log("Analytics: Optimize resume");
+      // Simulate optimization process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setAtsScore(95);
+      setShowAISuggestions(true);
+    } catch (err) {
+      setError("Failed to optimize resume. Please try again.");
+    } finally {
+      setIsOptimizing(false);
+    }
   }, []);
 
-  const { uploadResume } = useApiServices();
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      // Create the profile object that matches the API
+      const profileToSave = {
+        phone: userProfile.phone,
+        address: userProfile.location,
+        personal_website: userProfile.website,
+        linkedin_profile: userProfile.linkedin,
+        skills: userProfile.skills.map(skill => ({ name: skill })),
+        // Add other fields as needed
+      };
+      await updateUserProfile(profileToSave);
+      console.log("Resume saved successfully");
+    } catch (err) {
+      setError("Failed to save resume. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [userProfile, updateUserProfile]);
+
+  const handleExport = useCallback(async () => {
+    setIsExporting(true);
+    setError(null);
+    try {
+      // This would generate and download PDF
+      console.log("Analytics: Export PDF");
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Simulate PDF download
+      const link = document.createElement('a');
+      link.href = '#';
+      link.download = 'resume.pdf';
+      link.click();
+    } catch (err) {
+      setError("Failed to export PDF. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
+
+  const handlePreview = useCallback(() => {
+    // This would open preview modal
+    console.log("Analytics: Preview resume");
+    // For now, just log the action
+  }, []);
 
   const handleFileSelect = useCallback((file: File | null) => {
     setResumeFile(file);
@@ -242,6 +344,12 @@ export function ResumeEditor() {
     try {
       const data = await uploadResume(resumeFile);
       setUploadResult(data);
+      // Update ATS score based on uploaded resume - handle the response properly
+      if (data && typeof data === 'object' && 'ats_score' in data) {
+        setAtsScore(data.ats_score as number);
+      } else {
+        setAtsScore(85); // Default score
+      }
     } catch (e) {
       if (e instanceof Error) {
         setError(e.message || "An error occurred");
@@ -252,6 +360,10 @@ export function ResumeEditor() {
       setIsUploading(false);
     }
   }, [resumeFile, uploadResume]);
+
+  const handleProfileChange = useCallback((field: string, value: string) => {
+    setUserProfile(prev => ({ ...prev, [field]: value }));
+  }, []);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600"
@@ -267,9 +379,27 @@ export function ResumeEditor() {
     return "from-red-500 to-pink-500"
   }
 
-  const wordCount = useMemo(() => 247, []); // Replace with actual computation if needed
-  const sectionCount = useMemo(() => 6, []); // Replace with actual computation if needed
-  const keywordCount = useMemo(() => 23, []); // Replace with actual computation if needed
+  const wordCount = useMemo(() => {
+    const text = userProfile.summary + userProfile.experience.map(exp => exp.description || "").join(' ') + userProfile.skills.join(' ');
+    return text.split(' ').filter(word => word.length > 0).length;
+  }, [userProfile]);
+
+  const sectionCount = useMemo(() => {
+    let count = 0;
+    if (userProfile.summary) count++;
+    if (userProfile.experience.length > 0) count++;
+    if (userProfile.skills.length > 0) count++;
+    if (educationEntries.length > 0) count++;
+    if (projectsEntries.length > 0) count++;
+    if (certificationsEntries.length > 0) count++;
+    if (awardsEntries.length > 0) count++;
+    return count;
+  }, [userProfile, educationEntries, projectsEntries, certificationsEntries, awardsEntries]);
+
+  const keywordCount = useMemo(() => {
+    const keywords = userProfile.skills.join(' ').toLowerCase().split(' ');
+    return new Set(keywords).size;
+  }, [userProfile.skills]);
 
   return (
     <ErrorBoundary>
@@ -283,17 +413,39 @@ export function ResumeEditor() {
               <p className="text-muted-foreground">Create and optimize your resume with AI assistance</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handlePreview}>
                 <Eye className="w-4 h-4 mr-2" />
                 Preview
               </Button>
-              <Button variant="outline">
-                <Save className="w-4 h-4 mr-2" />
-                Save
+              <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </>
+                )}
               </Button>
-              <Button className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700">
-                <Download className="w-4 h-4 mr-2" />
-                Export PDF
+              <Button
+                className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
+                onClick={handleExport}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export PDF
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -333,27 +485,52 @@ export function ResumeEditor() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Full Name</label>
-                    <Input placeholder="John Doe" />
+                    <Input
+                      placeholder="John Doe"
+                      value={userProfile.firstName}
+                      onChange={(e) => handleProfileChange("firstName", e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Job Title</label>
-                    <Input placeholder="Senior Software Engineer" />
+                    <Input
+                      placeholder="Senior Software Engineer"
+                      value={userProfile.jobTitle || ""}
+                      onChange={(e) => handleProfileChange("jobTitle", e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Email</label>
-                    <Input type="email" placeholder="john@example.com" />
+                    <Input
+                      type="email"
+                      placeholder="john@example.com"
+                      value={userProfile.email}
+                      onChange={(e) => handleProfileChange("email", e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Phone</label>
-                    <Input placeholder="+1 (555) 123-4567" />
+                    <Input
+                      placeholder="+1 (555) 123-4567"
+                      value={userProfile.phone}
+                      onChange={(e) => handleProfileChange("phone", e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Location</label>
-                    <Input placeholder="San Francisco, CA" />
+                    <Input
+                      placeholder="San Francisco, CA"
+                      value={userProfile.location}
+                      onChange={(e) => handleProfileChange("location", e.target.value)}
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">LinkedIn</label>
-                    <Input placeholder="linkedin.com/in/johndoe" />
+                    <Input
+                      placeholder="linkedin.com/in/johndoe"
+                      value={userProfile.linkedin}
+                      onChange={(e) => handleProfileChange("linkedin", e.target.value)}
+                    />
                   </div>
                 </div>
               )}
@@ -365,6 +542,8 @@ export function ResumeEditor() {
                     placeholder="Write a compelling summary that highlights your key achievements and skills..."
                     rows={6}
                     className="resize-none"
+                    value={userProfile.summary}
+                    onChange={(e) => handleProfileChange("summary", e.target.value)}
                   />
                   <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                     <Sparkles className="w-4 h-4" />
@@ -375,41 +554,96 @@ export function ResumeEditor() {
 
               {activeSection === "experience" && (
                 <div className="space-y-6">
-                  <div className="border rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Job Title</label>
-                        <Input placeholder="Senior Software Engineer" />
+                  {userProfile.experience.map((exp, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Job Title</label>
+                          <Input
+                            placeholder="Senior Software Engineer"
+                            value={exp.title || ""}
+                            onChange={(e) => {
+                              const newExp = [...userProfile.experience];
+                              newExp[index] = { ...newExp[index], title: e.target.value };
+                              setUserProfile(prev => ({ ...prev, experience: newExp }));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Company</label>
+                          <Input
+                            placeholder="Google"
+                            value={exp.company || ""}
+                            onChange={(e) => {
+                              const newExp = [...userProfile.experience];
+                              newExp[index] = { ...newExp[index], company: e.target.value };
+                              setUserProfile(prev => ({ ...prev, experience: newExp }));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">Start Date</label>
+                          <Input
+                            type="month"
+                            value={exp.startDate || ""}
+                            onChange={(e) => {
+                              const newExp = [...userProfile.experience];
+                              newExp[index] = { ...newExp[index], startDate: e.target.value };
+                              setUserProfile(prev => ({ ...prev, experience: newExp }));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">End Date</label>
+                          <Input
+                            type="month"
+                            placeholder="Present"
+                            value={exp.endDate || ""}
+                            onChange={(e) => {
+                              const newExp = [...userProfile.experience];
+                              newExp[index] = { ...newExp[index], endDate: e.target.value };
+                              setUserProfile(prev => ({ ...prev, experience: newExp }));
+                            }}
+                          />
+                        </div>
                       </div>
                       <div>
-                        <label className="text-sm font-medium mb-2 block">Company</label>
-                        <Input placeholder="Google" />
+                        <label className="text-sm font-medium mb-2 block">Description</label>
+                        <Textarea
+                          placeholder="• Led a team of 5 engineers to develop..."
+                          rows={4}
+                          className="resize-none"
+                          value={exp.description || ""}
+                          onChange={(e) => {
+                            const newExp = [...userProfile.experience];
+                            newExp[index] = { ...newExp[index], description: e.target.value };
+                            setUserProfile(prev => ({ ...prev, experience: newExp }));
+                          }}
+                        />
                       </div>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">Start Date</label>
-                        <Input type="month" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium mb-2 block">End Date</label>
-                        <Input type="month" placeholder="Present" />
+                      <div className="flex justify-end mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newExp = userProfile.experience.filter((_, i) => i !== index);
+                            setUserProfile(prev => ({ ...prev, experience: newExp }));
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Remove
+                        </Button>
                       </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Description</label>
-                      <Textarea
-                        placeholder="• Led a team of 5 engineers to develop..."
-                        rows={4}
-                        className="resize-none"
-                      />
-                    </div>
-                    <div className="flex justify-end mt-4">
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                  <Button variant="outline" className="w-full bg-transparent">
+                  ))}
+                  <Button
+                    variant="outline"
+                    className="w-full bg-transparent"
+                    onClick={() => {
+                      const newExp = [...userProfile.experience, { title: "", company: "", startDate: "", endDate: "", description: "" }];
+                      setUserProfile(prev => ({ ...prev, experience: newExp }));
+                    }}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Experience
                   </Button>
@@ -421,26 +655,31 @@ export function ResumeEditor() {
                   <div>
                     <label className="text-sm font-medium mb-2 block">Technical Skills</label>
                     <div className="flex flex-wrap gap-2 mb-2">
-                      {["React", "TypeScript", "Node.js", "Python", "AWS"].map((skill) => (
-                        <Badge key={skill} variant="secondary" className="cursor-pointer">
+                      {userProfile.skills.map((skill, index) => (
+                        <Badge key={index} variant="secondary" className="cursor-pointer">
                           {skill}
-                          <button className="ml-2 hover:text-red-500">×</button>
+                          <button
+                            className="ml-2 hover:text-red-500"
+                            onClick={() => {
+                              const newSkills = userProfile.skills.filter((_, i) => i !== index);
+                              setUserProfile(prev => ({ ...prev, skills: newSkills }));
+                            }}
+                          >
+                            ×
+                          </button>
                         </Badge>
                       ))}
                     </div>
-                    <Input placeholder="Add a skill and press Enter" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Soft Skills</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {["Leadership", "Communication", "Problem Solving"].map((skill) => (
-                        <Badge key={skill} variant="outline" className="cursor-pointer">
-                          {skill}
-                          <button className="ml-2 hover:text-red-500">×</button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <Input placeholder="Add a soft skill and press Enter" />
+                    <Input
+                      placeholder="Add a skill and press Enter"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                          const newSkills = [...userProfile.skills, e.currentTarget.value.trim()];
+                          setUserProfile(prev => ({ ...prev, skills: newSkills }));
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               )}
@@ -607,19 +846,19 @@ export function ResumeEditor() {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Word Count</span>
-                <span className="text-sm font-medium">247</span>
+                <span className="text-sm font-medium">{wordCount}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Sections</span>
-                <span className="text-sm font-medium">6/8</span>
+                <span className="text-sm font-medium">{sectionCount}/8</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Keywords</span>
-                <span className="text-sm font-medium">23</span>
+                <span className="text-sm font-medium">{keywordCount}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">Last Updated</span>
-                <span className="text-sm font-medium">2 min ago</span>
+                <span className="text-sm font-medium">Just now</span>
               </div>
             </CardContent>
           </Card>

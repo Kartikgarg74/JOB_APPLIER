@@ -2,7 +2,7 @@
 export const API_CONFIG = {
   // Backend service URLs
   JOB_APPLIER_AGENT: process.env.NEXT_PUBLIC_JOB_APPLIER_AGENT_URL || 'https://job-applier-job-applier.onrender.com',
-  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'https://job-applier-ats-ervice.onrender.com',
+  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'https://job-applier-ats-service.onrender.com',
   USER_SERVICE: process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'https://job-applier-user-services.onrender.com',
   AGENT_ORCHESTRATION_SERVICE: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'https://job-applier-agent-orchestration-service.onrender.com',
 
@@ -14,9 +14,9 @@ export const API_CONFIG = {
     NOTIFICATIONS: '/v1/notifications',
 
     // ATS Service endpoints
-    ATS_SCORE: '/v1/ats-score',
-    ATS_SCORE_FILE: '/v1/ats-score-file',
-    SEARCH_JOBS: '/v1/search-jobs',
+    ATS_SCORE: '/score_ats',
+    ATS_SCORE_FILE: '/score_ats_file',
+    SEARCH_JOBS: '/search_jobs',
 
     // User Service endpoints
     USER_PROFILE: '/v1/profile',
