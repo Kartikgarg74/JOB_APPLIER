@@ -1,31 +1,128 @@
 "use client"
 
-import React, { useState } from "react"
-import Link from "next/link"
+import React, { useState, useCallback, useRef } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Zap,
-  Mail,
-  Lock,
+  Sun,
+  Moon,
+  ArrowRight,
+  CheckCircle,
+  FileText,
+  Upload,
+  X,
   Eye,
   EyeOff,
-  Github,
-  Chrome,
-  User,
-  Upload,
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  Moon,
-  Sun,
 } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useApiServices } from '@/lib/api-context';
+
+// File Upload Component for Signup
+function FileUploadSignup({ onFileSelect }: { onFileSelect: (file: File | null) => void }) {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'application/pdf' || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+        setSelectedFile(file);
+        onFileSelect(file);
+      }
+    }
+  }, [onFileSelect]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      onFileSelect(file);
+    }
+  }, [onFileSelect]);
+
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    onFileSelect(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, [onFileSelect]);
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          dragActive
+            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
+            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        {selectedFile ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-2">
+              <FileText className="w-8 h-8 text-green-600" />
+              <span className="font-medium">{selectedFile.name}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+            <Button variant="outline" size="sm" onClick={handleRemoveFile}>
+              <X className="w-4 h-4 mr-2" />
+              Remove File
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Drop your resume here</h3>
+            <p className="text-muted-foreground mb-4">or click to browse files</p>
+            <Button onClick={() => inputRef.current?.click()}>
+              <FileText className="w-4 h-4 mr-2" />
+              Choose File
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">Supports PDF, DOC, DOCX files up to 10MB</p>
+          </>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.doc,.docx"
+        onChange={handleChange}
+        aria-label="Upload resume file for signup"
+        title="Upload resume file for signup"
+      />
+    </div>
+  );
+}
 
 // ErrorBoundary component
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
@@ -55,88 +152,98 @@ class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void;
 export function SignupPage() {
   const { theme, setTheme } = useTheme()
   const [step, setStep] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
+
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
+    firstName: "",
+    lastName: "",
     agreeToTerms: false,
-    subscribeNewsletter: true,
+    agreeToMarketing: false,
   })
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [resumeFile, setResumeFile] = useState<File | null>(null)
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
+    setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords don't match")
+      setError("Passwords do not match")
       return
     }
-    if (!formData.agreeToTerms) {
-      setError("Please agree to the terms and conditions")
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long")
       return
     }
-    setError("")
     setStep(2)
-    console.log("Analytics: Signup step 1", formData)
   }
 
   const handleFinalSubmit = async () => {
     setIsLoading(true)
-    console.log("Analytics: Signup complete", formData)
-    // Simulate account creation
-    setTimeout(() => {
-      window.location.href = "/"
-    }, 2000)
+    setError("")
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.log("Account created:", { ...formData, resumeFile })
+    } catch (err) {
+      setError("Failed to create account. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const getPasswordStrength = (password: string) => {
-    let strength = 0
-    if (password.length >= 8) strength += 25
-    if (/[A-Z]/.test(password)) strength += 25
-    if (/[0-9]/.test(password)) strength += 25
-    if (/[^A-Za-z0-9]/.test(password)) strength += 25
-    return strength
+    if (password.length === 0) return { score: 0, label: "", color: "" }
+    if (password.length < 6) return { score: 25, label: "Weak", color: "text-red-500" }
+    if (password.length < 8) return { score: 50, label: "Fair", color: "text-yellow-500" }
+    if (password.length < 10) return { score: 75, label: "Good", color: "text-blue-500" }
+    return { score: 100, label: "Strong", color: "text-green-500" }
   }
 
   const passwordStrength = getPasswordStrength(formData.password)
 
+  const handleFileSelect = useCallback((file: File | null) => {
+    setResumeFile(file);
+    setError("");
+  }, []);
+
   if (step === 2) {
     return (
       <ErrorBoundary>
-        <main role="main" aria-label="Signup - Upload Resume" tabIndex={-1} className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950 dark:via-blue-950 dark:to-cyan-950 flex items-center justify-center p-4 focus:outline-none">
+        <main role="main" aria-label="Signup Step 2" tabIndex={-1} className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950 dark:via-blue-950 dark:to-cyan-950 flex items-center justify-center p-4 focus:outline-none">
+          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+
           <div className="w-full max-w-md relative">
             <Card className="border-0 shadow-2xl bg-card/80 backdrop-blur-sm">
               <CardHeader className="text-center pb-8">
                 <div className="flex justify-center mb-4">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-                    <CheckCircle className="w-7 h-7 text-white" />
+                    <Zap className="w-7 h-7 text-white" />
                   </div>
                 </div>
-                <CardTitle className="text-2xl font-bold">Upload Your Resume</CardTitle>
-                <CardDescription className="text-base">
-                  Optional: Upload your resume to get started faster
-                </CardDescription>
+                <CardTitle className="text-2xl font-bold">Complete your profile</CardTitle>
+                <CardDescription className="text-base">Upload your resume to get started with personalized job recommendations</CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-6">
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors">
-                  <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">Drop your resume here</h3>
-                  <p className="text-muted-foreground mb-4">or click to browse files</p>
-                  <Button variant="outline">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Choose File
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-4">Supports PDF, DOC, DOCX files up to 10MB</p>
-                </div>
+                {error && (
+                  <Alert variant="destructive" className="mb-4" role="alert" aria-live="assertive">
+                    <AlertDescription>
+                      <div className="flex justify-between items-center">
+                        <span>{error}</span>
+                        <button onClick={() => setError("")} className="ml-4 text-lg font-bold focus:outline-none" aria-label="Dismiss error">&times;</button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <FileUploadSignup onFileSelect={handleFileSelect} />
 
                 {resumeFile && (
                   <Alert>
@@ -234,28 +341,20 @@ export function SignupPage() {
               <form onSubmit={handleStep1Submit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="firstName" className="text-sm font-medium">
-                      First Name
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="firstName"
-                        placeholder="John"
-                        value={formData.firstName}
-                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange("firstName", e.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="lastName" className="text-sm font-medium">
-                      Last Name
-                    </label>
+                    <Label htmlFor="lastName">Last Name</Label>
                     <Input
                       id="lastName"
-                      placeholder="Doe"
+                      type="text"
                       value={formData.lastName}
                       onChange={(e) => handleInputChange("lastName", e.target.value)}
                       required
@@ -264,78 +363,58 @@ export function SignupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium">
-                    Password
-                  </label>
+                  <Label htmlFor="password">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Create a strong password"
                       value={formData.password}
                       onChange={(e) => handleInputChange("password", e.target.value)}
-                      className="pl-10 pr-10"
                       required
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <Eye className="h-4 w-4" />
                       )}
                     </Button>
                   </div>
-                  {formData.password && (
-                    <div className="space-y-2">
-                      <Progress value={passwordStrength} className="h-2" />
-                      <p className="text-xs text-muted-foreground">
-                        Password strength: {passwordStrength < 50 ? "Weak" : passwordStrength < 75 ? "Medium" : "Strong"}
-                      </p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Password strength</span>
+                      <span className={passwordStrength.color}>{passwordStrength.label}</span>
                     </div>
-                  )}
+                    <Progress value={passwordStrength.score} className="h-2" />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirm your password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                    required
+                  />
                 </div>
 
                 <div className="space-y-4">
@@ -344,70 +423,45 @@ export function SignupPage() {
                       id="terms"
                       checked={formData.agreeToTerms}
                       onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked as boolean)}
+                      required
                     />
-                    <label htmlFor="terms" className="text-sm text-muted-foreground">
+                    <Label htmlFor="terms" className="text-sm">
                       I agree to the{" "}
-                      <Link href="/terms" className="text-primary hover:underline">
+                      <a href="#" className="text-purple-600 hover:text-purple-500 underline">
                         Terms of Service
-                      </Link>{" "}
+                      </a>{" "}
                       and{" "}
-                      <Link href="/privacy" className="text-primary hover:underline">
+                      <a href="#" className="text-purple-600 hover:text-purple-500 underline">
                         Privacy Policy
-                      </Link>
-                    </label>
+                      </a>
+                    </Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id="newsletter"
-                      checked={formData.subscribeNewsletter}
-                      onCheckedChange={(checked) => handleInputChange("subscribeNewsletter", checked as boolean)}
+                      id="marketing"
+                      checked={formData.agreeToMarketing}
+                      onCheckedChange={(checked) => handleInputChange("agreeToMarketing", checked as boolean)}
                     />
-                    <label htmlFor="newsletter" className="text-sm text-muted-foreground">
-                      Subscribe to our newsletter for job search tips
-                    </label>
+                    <Label htmlFor="marketing" className="text-sm">
+                      I want to receive job recommendations and updates via email
+                    </Label>
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
-                >
+                <Button type="submit" className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700">
                   Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </form>
 
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or sign up with</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="w-full bg-transparent">
-                  <Chrome className="w-4 h-4 mr-2" />
-                  Google
-                </Button>
-                <Button variant="outline" className="w-full bg-transparent">
-                  <Github className="w-4 h-4 mr-2" />
-                  GitHub
-                </Button>
-              </div>
-
-              <div className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary hover:underline font-medium">
-                  Sign in
-                </Link>
-              </div>
-
               <div className="text-center">
-                <Link href="/welcome" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  ← Back to home
-                </Link>
+                <p className="text-sm text-muted-foreground">
+                  Already have an account?{" "}
+                  <a href="/login" className="text-purple-600 hover:text-purple-500 font-medium">
+                    Sign in
+                  </a>
+                </p>
               </div>
             </CardContent>
           </Card>

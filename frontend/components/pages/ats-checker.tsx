@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,12 +8,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, FileText, Link, CheckCircle, AlertTriangle, TrendingUp, Target, Zap, Download } from "lucide-react"
+import { Upload, FileText, Link, CheckCircle, AlertTriangle, TrendingUp, Target, Zap, Download, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApiServices } from '@/lib/api-context';
 import { AtsResults } from '@/lib/ats';
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 
 // ErrorBoundary component
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
@@ -40,6 +40,105 @@ class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void;
   }
 }
 
+// File Upload Component for ATS Checker
+function FileUploadATS({ onFileSelect }: { onFileSelect: (file: File) => void }) {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'application/pdf' || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+        setSelectedFile(file);
+        onFileSelect(file);
+      }
+    }
+  }, [onFileSelect]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      onFileSelect(file);
+    }
+  }, [onFileSelect]);
+
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    onFileSelect(null as any);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, [onFileSelect]);
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+          dragActive
+            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
+            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        {selectedFile ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-2">
+              <FileText className="w-8 h-8 text-green-600" />
+              <span className="font-medium">{selectedFile.name}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+            <Button variant="outline" size="sm" onClick={handleRemoveFile}>
+              <X className="w-4 h-4 mr-2" />
+              Remove File
+            </Button>
+          </div>
+        ) : (
+          <>
+            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Drop your resume here</h3>
+            <p className="text-muted-foreground mb-4">or click to browse files</p>
+            <Button onClick={() => inputRef.current?.click()}>
+              <FileText className="w-4 h-4 mr-2" />
+              Choose File
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">Supports PDF, DOC, DOCX files up to 10MB</p>
+          </>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.doc,.docx"
+        onChange={handleChange}
+        aria-label="Upload resume file for ATS analysis"
+        title="Upload resume file for ATS analysis"
+      />
+    </div>
+  );
+}
+
 export function ATSChecker() {
   const [activeTab, setActiveTab] = useState("upload");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -61,6 +160,11 @@ export function ATSChecker() {
     if (score >= 85) return "from-green-500 to-emerald-500"
     if (score >= 70) return "from-yellow-500 to-orange-500"
     return "from-red-500 to-pink-500"
+  }, []);
+
+  const handleFileSelect = useCallback((file: File | null) => {
+    setResumeFile(file);
+    setError(null);
   }, []);
 
   const handleAnalyze = useCallback(async () => {
@@ -280,16 +384,7 @@ export function ATSChecker() {
                   <CardDescription>Upload your resume in PDF or DOCX format for analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors">
-                    <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Drop your resume here</h3>
-                    <p className="text-muted-foreground mb-4">or click to browse files</p>
-                    <Button>
-                      <FileText className="w-4 h-4 mr-2" />
-                      Choose File
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-4">Supports PDF, DOC, DOCX files up to 10MB</p>
-                  </div>
+                  <FileUploadATS onFileSelect={handleFileSelect} />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -336,7 +431,7 @@ export function ATSChecker() {
               <Button
                 size="lg"
                 onClick={handleAnalyze}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || !resumeFile || !jobDescription}
                 className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
               >
                 {isAnalyzing ? (
@@ -356,8 +451,11 @@ export function ATSChecker() {
                   This may take a few moments while we analyze your resume...
                 </p>
               )}
-              {error && (
-                <p className="text-sm text-red-500 mt-4">{error}</p>
+              {!resumeFile && (
+                <p className="text-sm text-yellow-600 mt-4">Please upload a resume file</p>
+              )}
+              {!jobDescription && (
+                <p className="text-sm text-yellow-600 mt-4">Please provide a job description</p>
               )}
             </CardContent>
           </Card>

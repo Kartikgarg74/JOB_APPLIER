@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useCallback } from "react"
+import React, { useState, useMemo, useCallback, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,11 +20,122 @@ import {
   TrendingUp,
   AlertCircle,
   Lightbulb,
+  Upload,
+  FileText,
+  X,
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useApiServices } from '@/lib/api-context';
 import { UploadResult } from '@/lib/resume';
 import Image from 'next/image';
+
+// File Upload Component for Resume Editor
+function FileUploadResume({ onFileSelect, onUpload }: {
+  onFileSelect: (file: File | null) => void;
+  onUpload: () => void;
+}) {
+  const [dragActive, setDragActive] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'application/pdf' || file.type.includes('word') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+        setSelectedFile(file);
+        onFileSelect(file);
+      }
+    }
+  }, [onFileSelect]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      onFileSelect(file);
+    }
+  }, [onFileSelect]);
+
+  const handleRemoveFile = useCallback(() => {
+    setSelectedFile(null);
+    onFileSelect(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  }, [onFileSelect]);
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+          dragActive
+            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
+            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+        }`}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        {selectedFile ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-center gap-2">
+              <FileText className="w-8 h-8 text-green-600" />
+              <span className="font-medium">{selectedFile.name}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" size="sm" onClick={handleRemoveFile}>
+                <X className="w-4 h-4 mr-2" />
+                Remove File
+              </Button>
+              <Button size="sm" onClick={onUpload}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Resume
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Drop your resume here</h3>
+            <p className="text-muted-foreground mb-4">or click to browse files</p>
+            <Button onClick={() => inputRef.current?.click()}>
+              <FileText className="w-4 h-4 mr-2" />
+              Choose File
+            </Button>
+            <p className="text-xs text-muted-foreground mt-4">Supports PDF, DOC, DOCX files up to 10MB</p>
+          </>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.doc,.docx"
+        onChange={handleChange}
+        aria-label="Upload resume file for editing"
+        title="Upload resume file for editing"
+      />
+    </div>
+  );
+}
 
 const resumeSections = [
   { id: "header", title: "Header", required: true },
@@ -113,6 +224,11 @@ export function ResumeEditor() {
   }, []);
 
   const { uploadResume } = useApiServices();
+
+  const handleFileSelect = useCallback((file: File | null) => {
+    setResumeFile(file);
+    setError(null);
+  }, []);
 
   const handleUpload = useCallback(async () => {
     if (!resumeFile) {
@@ -514,25 +630,25 @@ export function ResumeEditor() {
               <CardTitle>Resume Upload</CardTitle>
             </CardHeader>
             <CardContent>
-              <label htmlFor="resume-upload" className="text-sm font-medium mb-1 block">Upload Resume File</label>
-              <input
-                id="resume-upload"
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={e => {
-                  const file = e.target.files?.[0] || null;
-                  setResumeFile(file);
-                  if (file) handleUpload();
-                }}
-                className="mb-2"
-                placeholder="Choose a file..."
-              />
-              {resumeFile && <div className="text-xs text-muted-foreground">Selected: {resumeFile.name}</div>}
-              <Button onClick={handleUpload} disabled={isUploading || !resumeFile} className="w-full mb-2">
-                {isUploading ? "Uploading..." : "Upload Resume"}
-              </Button>
-              {uploadResult && <div className="text-green-600 text-xs">Upload successful!</div>}
-              {error && <div className="text-red-600 text-xs">{error}</div>}
+              <FileUploadResume onFileSelect={handleFileSelect} onUpload={handleUpload} />
+              {isUploading && (
+                <div className="mt-4 text-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600 mx-auto"></div>
+                  <p className="text-sm text-gray-600 mt-2">Uploading...</p>
+                </div>
+              )}
+              {uploadResult && (
+                <Alert className="mt-4 border-green-200 bg-green-50">
+                  <AlertDescription className="text-green-800">
+                    Resume uploaded successfully!
+                  </AlertDescription>
+                </Alert>
+              )}
+              {error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         </div>

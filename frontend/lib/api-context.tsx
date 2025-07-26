@@ -2,7 +2,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { fetchApplications, applyForJob, matchJobs, createApplicationManually, updateApplicationStatus, deleteApplicationById } from './applications';
 import { uploadResume } from './resume';
-import { searchJobs } from './ats';
+import { searchJobs, fetchAtsScore } from './ats';
 import { getUserProfile, updateUserProfile, getEducation, createEducation, getExperience, createExperience, getSkills, createSkill } from './user';
 
 // Types for API services
@@ -20,6 +20,7 @@ export interface ApiServices {
 
   // Job search and ATS
   searchJobs: typeof searchJobs;
+  fetchAtsScore: typeof fetchAtsScore;
 
   // User profile management
   getUserProfile: typeof getUserProfile;
@@ -51,6 +52,7 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 
     // Job search and ATS
     searchJobs,
+    fetchAtsScore,
 
     // User profile management
     getUserProfile,
