@@ -17,6 +17,10 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_record)
 
 def setup_logging(log_file: str = "output/centralized.log"):
+    import os
+    log_dir = os.path.dirname(log_file)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir, exist_ok=True)
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     formatter = JsonFormatter()
