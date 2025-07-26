@@ -2,7 +2,7 @@
 # Install with: pip install -r requirements-nlp.txt
 
 # Core NLP libraries
-spacy==3.7.4
+spacy==3.7.2
 nltk==3.8.1
 
 # Additional NLP utilities
