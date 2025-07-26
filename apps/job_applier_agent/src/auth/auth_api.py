@@ -11,7 +11,7 @@ from fastapi_limiter.depends import RateLimiter
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from jose import jwt
-from passlib.context.data import CryptContext
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 import pyotp
 import qrcode
