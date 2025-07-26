@@ -13,8 +13,8 @@ import json
 from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
 
-from src.user_api import router as user_router
-from src.profile_api import router as profile_router
+from .user_api import router as user_router
+from profile_api import router as profile_router
 
 setup_logging()
 
