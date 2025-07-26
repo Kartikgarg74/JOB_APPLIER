@@ -21,13 +21,13 @@ setup_logging()
 # Prometheus metrics
 user_signup_counter = Counter('user_signups_total', 'Total user signups')
 user_login_counter = Counter('user_logins_total', 'Total user logins')
-profile_update_counter = Counter('profile_updates_total', 'Total profile updates')
-file_upload_counter = Counter('file_uploads_total', 'Total file uploads')
-error_counter = Counter('errors_total', 'Total error responses')
-uptime_gauge = Gauge('app_uptime_seconds', 'Application uptime in seconds')
+profile_update_counter = Counter('user_profile_updates_total', 'Total profile updates')
+file_upload_counter = Counter('user_file_uploads_total', 'Total file uploads')
+error_counter = Counter('user_errors_total', 'Total error responses')
+uptime_gauge = Gauge('user_uptime_seconds', 'Application uptime in seconds')
 startup_time = time.time()
-request_count = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
-request_latency = Histogram('api_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
+request_count = Counter('user_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
+request_latency = Histogram('user_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

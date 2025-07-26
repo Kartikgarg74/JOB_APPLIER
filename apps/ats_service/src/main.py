@@ -19,12 +19,12 @@ setup_logging()
 
 # Prometheus metrics
 ats_score_counter = Counter('ats_scores_total', 'Total ATS scores calculated')
-job_search_counter = Counter('job_searches_total', 'Total job searches performed')
-error_counter = Counter('errors_total', 'Total error responses')
-uptime_gauge = Gauge('app_uptime_seconds', 'Application uptime in seconds')
+job_search_counter = Counter('ats_job_searches_total', 'Total job searches performed')
+error_counter = Counter('ats_errors_total', 'Total error responses')
+uptime_gauge = Gauge('ats_uptime_seconds', 'Application uptime in seconds')
 startup_time = time.time()
-request_count = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
-request_latency = Histogram('api_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
+request_count = Counter('ats_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
+request_latency = Histogram('ats_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

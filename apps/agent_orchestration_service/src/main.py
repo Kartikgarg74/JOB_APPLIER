@@ -18,14 +18,14 @@ from .agent_api import router as agent_router
 setup_logging()
 
 # Prometheus metrics
-agent_execution_counter = Counter('agent_executions_total', 'Total agent executions')
-job_application_counter = Counter('job_applications_total', 'Total job applications')
-workflow_counter = Counter('workflows_total', 'Total workflows executed')
-error_counter = Counter('errors_total', 'Total error responses')
-uptime_gauge = Gauge('app_uptime_seconds', 'Application uptime in seconds')
+agent_execution_counter = Counter('agent_orchestration_executions_total', 'Total agent executions')
+job_application_counter = Counter('agent_orchestration_job_applications_total', 'Total job applications')
+workflow_counter = Counter('agent_orchestration_workflows_total', 'Total workflows executed')
+error_counter = Counter('agent_orchestration_errors_total', 'Total error responses')
+uptime_gauge = Gauge('agent_orchestration_uptime_seconds', 'Application uptime in seconds')
 startup_time = time.time()
-request_count = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
-request_latency = Histogram('api_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
+request_count = Counter('agent_orchestration_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
+request_latency = Histogram('agent_orchestration_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
