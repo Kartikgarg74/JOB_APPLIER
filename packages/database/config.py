@@ -41,8 +41,24 @@ def auto_log_audit(mapper, connection, target, action):
     connection.execute(ins)
 
 # Import models and set up event listeners after Base is defined
-from packages.database.models import User, Education, Experience, Project, Skill, JobPreference, InAppNotification
-for model in [User, Education, Experience, Project, Skill, JobPreference, InAppNotification]:
-    event.listen(model, 'after_insert', lambda m, c, t: auto_log_audit(m, c, t, 'insert'))
-    event.listen(model, 'after_update', lambda m, c, t: auto_log_audit(m, c, t, 'update'))
-    event.listen(model, 'after_delete', lambda m, c, t: auto_log_audit(m, c, t, 'delete'))
+def setup_audit_listeners():
+    from packages.database.models import User, Education, Experience, Project, Skill, JobPreference, InAppNotification
+    models = [User, Education, Experience, Project, Skill, JobPreference, InAppNotification]
+    for model in models:
+        event.listen(model, 'after_insert', lambda m, c, t: auto_log_audit(m, c, t, 'insert'))
+        event.listen(model, 'after_update', lambda m, c, t: auto_log_audit(m, c, t, 'update'))
+        event.listen(model, 'after_delete', lambda m, c, t: auto_log_audit(m, c, t, 'delete'))
+
+# Call this function after models are imported
+
+def init_database():
+    """Initialize database with audit listeners"""
+    setup_audit_listeners()
+
+def get_db():
+    """Dependency to get database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

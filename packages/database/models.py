@@ -260,3 +260,7 @@ class FileMetadata(Base):
     is_encrypted = Column(Boolean, default=False)
     is_compressed = Column(Boolean, default=False)
     file_metadata = Column(JSON, nullable=True)
+
+# Initialize database after all models are defined
+from .config import init_database
+init_database()
