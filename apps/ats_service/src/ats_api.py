@@ -16,7 +16,7 @@ from prometheus_client import Counter
 
 logger = logging.getLogger(__name__)
 
-# Import metrics from main
+# Import metrics from metrics module
 from .metrics import ats_score_counter, job_search_counter
 
 class ATSScoreRequest(BaseModel):
