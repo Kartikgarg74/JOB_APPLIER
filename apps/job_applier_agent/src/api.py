@@ -41,6 +41,7 @@ from packages.agents.job_scraper.job_scraper_agent import JobScraperAgent
 from packages.utilities.parsers.resume_parser import extract_text_from_resume
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter
+from apps.job_applier_agent.src.metrics import job_apply_counter, file_upload_counter, file_download_counter
 
 # Redis cache setup
 REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
@@ -86,10 +87,6 @@ job_applier_agent_status = {
     "last_run": None,
     "next_run": None,
 }
-
-file_upload_counter = Counter('file_uploads_total', 'Total number of file uploads')
-file_download_counter = Counter('file_downloads_total', 'Total number of file downloads')
-job_apply_counter = Counter('job_applications_total', 'Total number of job applications')
 
 
 # Dependency to get FileManagement instance
