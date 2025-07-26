@@ -28,9 +28,8 @@ from packages.config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_
 from .schemas import UserCreate, UserLogin, UserResponse, GoogleAuthCallback
 from packages.utilities.email_utils import send_email
 import secrets
-from packages.database.user_data_model import log_audit
+from packages.database.models import InAppNotification
 from fastapi.security import OAuth2PasswordBearer
-from packages.database.user_data_model import InAppNotification
 from packages.database.models import Skill, Project, Experience, Education, JobPreference
 from packages.utilities.encryption_utils import mask_email, mask_phone
 from apps.job_applier_agent.src.main import signup_counter, login_counter
