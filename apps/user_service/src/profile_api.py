@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from packages.errors.custom_exceptions import JobApplierException, NotificationError
 
-from apps.job_applier_agent.src.auth_api import get_current_user
+from apps.job_applier_agent.src.auth.auth_api import get_current_user
 from packages.database.config import SessionLocal
 from packages.database.models import User, Education, Experience, Project, JobPreference, Skill
 from packages.notifications.notification_service import NotificationService
