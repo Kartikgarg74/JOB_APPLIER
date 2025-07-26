@@ -14,17 +14,9 @@ from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
 
 from .ats_api import router as ats_router
+from .metrics import ats_score_counter, job_search_counter, error_counter, uptime_gauge, startup_time, request_count, request_latency
 
 setup_logging()
-
-# Prometheus metrics
-ats_score_counter = Counter('ats_scores_total', 'Total ATS scores calculated')
-job_search_counter = Counter('ats_job_searches_total', 'Total job searches performed')
-error_counter = Counter('ats_errors_total', 'Total error responses')
-uptime_gauge = Gauge('ats_uptime_seconds', 'Application uptime in seconds')
-startup_time = time.time()
-request_count = Counter('ats_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
-request_latency = Histogram('ats_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
