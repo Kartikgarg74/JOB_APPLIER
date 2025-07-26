@@ -12,8 +12,12 @@ from pydantic import BaseModel
 import tempfile
 import os
 from packages.agents.job_scraper.job_scraper_agent import JobScraperAgent
+from prometheus_client import Counter
 
 logger = logging.getLogger(__name__)
+
+# Import metrics from main
+from main import ats_score_counter, job_search_counter
 
 class ATSScoreRequest(BaseModel):
     job_description: str
@@ -103,6 +107,10 @@ async def score_ats_endpoint(
         ats_result = ats_scorer_agent.score_ats(
             parsed_resume_data, request.job_description
         )
+
+        # Increment metrics
+        ats_score_counter.inc()
+
         return {
             "message": "ATS score generated successfully",
             "score": ats_result["score"],
@@ -163,6 +171,10 @@ async def score_ats_file_endpoint(
         ats_result = ats_scorer_agent.score_ats(
             parsed_resume_data, job_description, industry=industry
         )
+
+        # Increment metrics
+        ats_score_counter.inc()
+
         return JSONResponse({
             "message": "ATS score generated successfully",
             **ats_result
@@ -228,6 +240,10 @@ async def search_jobs_endpoint(
                 unique_jobs.append(job)
         if not unique_jobs:
             return {"message": "No jobs found or scraping was blocked.", "jobs": []}
+
+        # Increment metrics
+        job_search_counter.inc()
+
         return {"message": "Job search successful", "jobs": unique_jobs}
     except Exception as e:
         return {"message": f"Job search failed: {e}", "jobs": []}

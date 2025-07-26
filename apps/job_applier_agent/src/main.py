@@ -14,20 +14,28 @@ from packages.errors.custom_exceptions import JobApplierException
 from starlette.middleware.base import BaseHTTPMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, Gauge, Histogram
 from fastapi import Response as FastAPIResponse
+from contextlib import asynccontextmanager
 
 from packages.utilities.logging_utils import setup_logging
 
-from src.api import app as job_applier_api_app
+from api import app as job_applier_api_app
 
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 setup_logging()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global startup_time
+    startup_time = time.time()
+    yield
+
 app = FastAPI(
     title="Job Applier Agent API",
     description="API for the Job Applier Agent, managing user profiles, job applications, and agent interactions.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -72,10 +80,7 @@ startup_time = time.time()
 request_count = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint', 'status_code'])
 request_latency = Histogram('api_request_latency_seconds', 'API request latency in seconds', ['method', 'endpoint'])
 
-@app.on_event("startup")
-def set_startup_time():
-    global startup_time
-    startup_time = time.time()
+
 
 @app.get("/metrics")
 def metrics():
