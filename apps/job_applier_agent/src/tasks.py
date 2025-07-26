@@ -1,5 +1,5 @@
 from apps.job_applier_agent.src.celery_app import celery_app
-from packages.utilities.parsers.resume_parser import parse_resume
+from packages.utilities.parsers.resume_parser import extract_text_from_resume
 from packages.agents.ats_scorer.ats_scorer_agent import ATSScorerAgent
 import os
 import logging
@@ -23,8 +23,7 @@ def process_resume_upload_task(
             tmp.write(resume_bytes)
             tmp_path = tmp.name
         # Parse the resume
-        resume_data = parse_resume(tmp_path, file_content_type)
-        resume_text_content = resume_data.get("full_text", "")
+        resume_text_content = extract_text_from_resume(tmp_path)
         os.unlink(tmp_path)
 
         if not resume_text_content:
@@ -62,8 +61,7 @@ def calculate_ats_score_task(
     resume_file_path: str, resume_content_type: str, job_description: str
 ):
     try:
-        resume_data = parse_resume(resume_file_path, resume_content_type)
-        resume_text_content = resume_data.get("full_text", "")
+        resume_text_content = extract_text_from_resume(resume_file_path)
 
         if not resume_text_content:
             logger.warning(f"Could not extract text from resume {resume_file_path}")
