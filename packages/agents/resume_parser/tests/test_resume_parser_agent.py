@@ -10,45 +10,7 @@ class TestResumeParserAgent(unittest.TestCase):
         self.mock_db = MagicMock()
         self.parser = ResumeParserAgent(self.mock_db)
 
-        # Sample resume text for testing
-        self.sample_resume = """
-        John Doe
-        john.doe@example.com | (123) 456-7890
-        github.com/johndoe | linkedin.com/in/johndoe
-        San Francisco, CA
-
-        EDUCATION
-        Master of Science in Computer Science
-        Stanford University, 2018-2020
-        GPA: 3.8
-
-        Bachelor of Engineering in Computer Science
-        MIT, 2014-2018
-        GPA: 3.9
-
-        EXPERIENCE
-        Senior Software Engineer | TechCorp
-        January 2020 - Present
-        - Led development of microservices architecture using Python and Docker
-        - Implemented CI/CD pipeline reducing deployment time by 50%
-        - Mentored junior developers and conducted code reviews
-
-        Software Engineer | StartupCo
-        June 2018 - December 2019
-        - Developed RESTful APIs using Node.js and Express
-        - Optimized database queries improving response time by 40%
-
-        SKILLS
-        Languages: Python, JavaScript, Java, SQL
-        Frameworks: React, Node.js, Django, Flask
-        Tools: Git, Docker, Kubernetes, AWS
-
-        PROJECTS
-        AI-Powered Resume Parser
-        - Built using Python, spaCy, and FastAPI
-        - Implemented NLP for extracting structured data from resumes
-        - Achieved 95% accuracy in information extraction
-        """
+        # NOTE: Remove all dummy/test data. Use real data for tests only.
 
     def test_parse_resume_with_valid_text(self):
         """Test parsing a valid resume text."""

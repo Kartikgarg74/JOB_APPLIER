@@ -787,52 +787,6 @@ class ApplicationAutomationAgent:
 
 if __name__ == "__main__":
     from packages.utilities.logging_utils import setup_logging
-
     setup_logging()
-
     applier = ApplicationAutomationAgent()
-
-    # Dummy job data for testing
-    dummy_job_data_generic = {
-        "title": "QA Engineer",
-        "company": "TestCo",
-        "url": "https://www.google.com",  # Using a simple, accessible URL for initial testing
-        "description": "Test software applications.",
-    }
-
-    dummy_job_data_workday = {
-        "title": "Software Developer",
-        "company": "Workday Inc.",
-        "url": "https://www.workday.com/en-us/company/careers.html",  # Example Workday careers page
-        "description": "Develop and maintain Workday applications.",
-    }
-
-    dummy_job_data_greenhouse = {
-        "title": "Product Manager",
-        "company": "Greenhouse Inc.",
-        "url": "https://www.greenhouse.io/careers",  # Example Greenhouse careers page
-        "description": "Manage product development.",
-    }
-
-    dummy_resume_path = "/tmp/dummy_resume.pdf"  # Placeholder, ensure this file exists for actual testing
-    dummy_cover_letter_path = "/tmp/dummy_cover_letter.pdf"  # Placeholder
-
-    print("\n--- Attempting Generic Job Application ---")
-    success_generic = applier.apply_for_job(
-        dummy_job_data_generic, dummy_resume_path, dummy_cover_letter_path
-    )
-    print(f"Generic Application attempt: {'SUCCESS' if success_generic else 'FAILED'}")
-
-    print("\n--- Attempting Workday Job Application (Placeholder) ---")
-    success_workday = applier.apply_for_job(
-        dummy_job_data_workday, dummy_resume_path, dummy_cover_letter_path
-    )
-    print(f"Workday Application attempt: {'SUCCESS' if success_workday else 'FAILED'}")
-
-    print("\n--- Attempting Greenhouse Job Application (Placeholder) ---")
-    success_greenhouse = applier.apply_for_job(
-        dummy_job_data_greenhouse, dummy_resume_path, dummy_cover_letter_path
-    )
-    print(
-        f"Greenhouse Application attempt: {'SUCCESS' if success_greenhouse else 'FAILED'}"
-    )
+    # Removed all dummy job data and test application attempts

@@ -14,7 +14,7 @@ const authOptions = {
       async authorize(credentials, req) {
         // [CONTEXT] Authenticates user against the backend API
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/login`,
+          `${process.env.NEXT_PUBLIC_USER_SERVICE_URL}/api/login`,
           {
             method: "POST",
             headers: {

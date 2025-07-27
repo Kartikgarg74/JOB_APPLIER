@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import patch
 
+# NOTE: Remove all dummy/test data. Use real data for E2E tests only.
+
 def test_full_application_flow():
     # Mock job scraping
     with patch('packages.agents.job_scraper.job_scraper_agent.JobScraperAgent.search_indeed') as mock_scrape:

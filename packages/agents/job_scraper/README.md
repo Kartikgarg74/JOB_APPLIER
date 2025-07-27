@@ -8,10 +8,10 @@ This agent is responsible for scraping job listings from various online sources 
 - `typing`: For type hints.
 
 ## Key Components
-- `job_scraper_agent.py`: 
+- `job_scraper_agent.py`:
   - Defines the `JobScraperAgent` class, which contains the `scrape` method.
   - The `scrape` method takes a list of job roles and locations as input and returns a list of dictionaries, each representing a job listing with details like title, company, location, description, and URL.
-  - Currently, the `scrape` method contains placeholder logic and returns dummy data. In a full implementation, this would integrate with web scraping libraries or job board APIs.
+  - # NOTE: Remove all references to dummy/sample data. Use real data for production.
 
 ## Usage Examples
 ```python

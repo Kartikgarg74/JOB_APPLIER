@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:8000';
     const response = await fetch(`${backendUrl}/v1/notifications/${userId}?limit=${limit}&offset=${offset}`);
 
     if (!response.ok) {

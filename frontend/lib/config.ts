@@ -1,10 +1,10 @@
 // API Configuration for deployed services
 export const API_CONFIG = {
-  // Backend service URLs
-  JOB_APPLIER_AGENT: process.env.NEXT_PUBLIC_JOB_APPLIER_AGENT_URL || 'https://job-applier-job-applier.onrender.com',
-  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'https://job-applier-job-applier.onrender.com', // Fallback to Job Applier Agent
-  USER_SERVICE: process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'https://job-applier-user-services.onrender.com',
-  AGENT_ORCHESTRATION_SERVICE: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'https://job-applier-agent-orchestration-service.onrender.com',
+  // Backend service URLs - Using local development URLs
+  JOB_APPLIER_AGENT: process.env.NEXT_PUBLIC_JOB_APPLIER_AGENT_URL || 'http://localhost:8001',
+  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'http://localhost:8001', // Fallback to Job Applier Agent
+  USER_SERVICE: process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:8001',
+  AGENT_ORCHESTRATION_SERVICE: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'http://localhost:8001',
 
   // API endpoints
   ENDPOINTS: {

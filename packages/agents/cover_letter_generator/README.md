@@ -30,23 +30,7 @@ setup_logging()
 # Initialize the CoverLetterGeneratorAgent
 generator = CoverLetterGeneratorAgent()
 
-# Dummy resume data
-dummy_resume_data = {
-    "name": "Alice Smith",
-    "email": "alice.smith@example.com",
-    "skills": ["Python", "Data Analysis", "Machine Learning", "SQL"],
-    "experience": [
-        {"title": "Data Scientist", "description": "Developed predictive models."}
-    ]
-}
-
-# Dummy job description
-dummy_job_description = (
-    "Job Title: Senior Data Scientist\nCompany: Innovate Solutions\nLocation: Remote\n" 
-    "Description: We are seeking a highly skilled Data Scientist with expertise in Python, "
-    "Machine Learning, and big data technologies. The ideal candidate will lead projects "
-    "and develop innovative solutions."
-)
+# NOTE: Remove all references to dummy/sample data. Use real data for production.
 
 print("\n--- Generating Cover Letter ---")
 cover_letter = generator.generate_cover_letter(dummy_resume_data, dummy_job_description)
@@ -56,7 +40,7 @@ print(cover_letter)
 
 # Another example
 dummy_job_description_2 = (
-    "Role: Software Engineer\nFirm: Tech Giant Inc.\n" 
+    "Role: Software Engineer\nFirm: Tech Giant Inc.\n"
     "Description: Develop scalable backend systems using Python and SQL. "
     "Experience with cloud platforms is a plus."
 )

@@ -11,7 +11,7 @@ export async function DELETE(request: Request, { params }: { params: { notificat
   const { notification_id } = params;
 
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+    const backendUrl = process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:8000';
     const response = await fetch(`${backendUrl}/v1/notifications/${notification_id}`, {
       method: 'DELETE',
     });

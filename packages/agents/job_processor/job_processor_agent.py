@@ -40,45 +40,6 @@ class JobProcessorAgent:
 
 if __name__ == "__main__":
     from packages.utilities.logging_utils import setup_logging
-
     setup_logging()
-
     processor = JobProcessorAgent()
-
-    # Dummy job listings for testing
-    dummy_job_listings = [
-        {
-            "title": "  Software Engineer (Python)  ",
-            "company": "  Global Tech  ",
-            "location": "  New York, NY, USA  ",
-            "description": "We are looking for a senior software engineer with strong Python and SQL skills.",
-            "url": "http://example.com/job1",
-        },
-        {
-            "title": "Junior Data Scientist",
-            "company": "DataCo",
-            "location": "San Francisco, CA",
-            "description": "Entry-level position for a data scientist. Knowledge of machine learning is a plus.",
-            "url": "http://example.com/job2",
-        },
-        {
-            "title": "Product Manager",
-            "company": "Innovate Corp.",
-            "location": "Remote",
-            "description": "Define product vision and roadmap. No specific tech skills mentioned.",
-            "url": "http://example.com/job3",
-        },
-    ]
-
-    print("\n--- Processing Dummy Job Listings ---")
-    processed_jobs = processor.process(dummy_job_listings)
-
-    for job in processed_jobs:
-        print(f"\nTitle: {job['title']}")
-        print(f"Company: {job['company']}")
-        print(f"Location: {job['location']}")
-        print(f"Experience Level: {job['experience_level']}")
-        print(f"Extracted Skills: {', '.join(job['extracted_skills'])}")
-        print(f"URL: {job['url']}")
-
-    print("\n--- Processing complete ---")
+    # Removed all dummy job listings and test processing
