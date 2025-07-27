@@ -42,6 +42,35 @@ from packages.utilities.parsers.resume_parser import extract_text_from_resume
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter
 from apps.job_applier_agent.src.metrics import job_apply_counter, file_upload_counter, file_download_counter
+from packages.database.job_data_model import JobListing, JobDatabase
+from packages.database.config import SessionLocal
+from fastapi import Query
+
+job_db = JobDatabase()
+
+class JobCreateRequest(BaseModel):
+    title: str
+    company: str
+    location: str
+    description: str
+    requirements: str = None
+    salary: str = None
+    posting_date: datetime = None
+    url: str
+    source: str = None
+
+class JobUpdateRequest(BaseModel):
+    title: str = None
+    company: str = None
+    location: str = None
+    description: str = None
+    requirements: str = None
+    salary: str = None
+    posting_date: datetime = None
+    url: str = None
+    source: str = None
+    is_applied: bool = None
+    application_status: str = None
 
 # Redis cache setup
 REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
@@ -988,6 +1017,44 @@ async def location_autocomplete(request: LocationAutocompleteRequest):
         f"{request.query} Road, City, Country"
     ]
     return LocationAutocompleteResponse(suggestions=suggestions)
+
+@v1_router.get("/jobs", response_model=List[JobListing], summary="List all jobs")
+async def list_jobs():
+    session = SessionLocal()
+    jobs = job_db.get_all_job_listings(session)
+    return jobs
+
+@v1_router.post("/jobs", response_model=JobListing, summary="Create a new job")
+async def create_job(job: JobCreateRequest):
+    session = SessionLocal()
+    job_obj = job_db.add_job_listing(session, job.dict())
+    return job_obj
+
+@v1_router.get("/jobs/{job_id}", response_model=JobListing, summary="Get a job by ID")
+async def get_job(job_id: str):
+    session = SessionLocal()
+    job = job_db.get_job_listing(session, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+@v1_router.put("/jobs/{job_id}", response_model=JobListing, summary="Update a job by ID")
+async def update_job(job_id: str, job_update: JobUpdateRequest):
+    session = SessionLocal()
+    updated = job_db.update_job_listing(session, job_id, {k: v for k, v in job_update.dict().items() if v is not None})
+    if not updated:
+        raise HTTPException(status_code=404, detail="Job not found or not updated")
+    # Fetch the updated job
+    job = job_db.get_job_listing(session, job_id)
+    return job
+
+@v1_router.delete("/jobs/{job_id}", summary="Delete a job by ID")
+async def delete_job(job_id: str):
+    session = SessionLocal()
+    deleted = job_db.delete_job_listing(session, job_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Job not found or not deleted")
+    return {"status": "success", "message": f"Job {job_id} deleted."}
 
 # Export the router for use in main.py
 router = v1_router
