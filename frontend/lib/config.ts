@@ -2,7 +2,7 @@
 export const API_CONFIG = {
   // Backend service URLs
   JOB_APPLIER_AGENT: process.env.NEXT_PUBLIC_JOB_APPLIER_AGENT_URL || 'https://job-applier-job-applier.onrender.com',
-  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'https://job-applier-ats-service.onrender.com',
+  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'https://job-applier-job-applier.onrender.com', // Fallback to Job Applier Agent
   USER_SERVICE: process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'https://job-applier-user-services.onrender.com',
   AGENT_ORCHESTRATION_SERVICE: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'https://job-applier-agent-orchestration-service.onrender.com',
 
@@ -13,18 +13,18 @@ export const API_CONFIG = {
     UPLOAD_RESUME: '/v1/upload-resume',
     NOTIFICATIONS: '/v1/notifications',
 
-    // ATS Service endpoints
-    ATS_SCORE: '/score_ats',
-    ATS_SCORE_FILE: '/score_ats_file',
-    SEARCH_JOBS: '/search_jobs',
+    // ATS Service endpoints (currently down, using Job Applier Agent as fallback)
+    ATS_SCORE: '/v1/ats-score',
+    ATS_SCORE_FILE: '/v1/ats-score',
+    SEARCH_JOBS: '/v1/job-search',
 
-    // User Service endpoints
-    USER_PROFILE: '/v1/profile',
-    USER_EDUCATION: '/v1/education',
-    USER_EXPERIENCE: '/v1/experience',
-    USER_PROJECTS: '/v1/projects',
-    USER_SKILLS: '/v1/skills',
-    USER_JOB_PREFERENCES: '/v1/job_preferences',
+    // User Service endpoints (no /v1 prefix)
+    USER_PROFILE: '/profile',
+    USER_EDUCATION: '/education',
+    USER_EXPERIENCE: '/experience',
+    USER_PROJECTS: '/projects',
+    USER_SKILLS: '/skills',
+    USER_JOB_PREFERENCES: '/job_preferences',
 
     // Agent Orchestration endpoints
     MATCH_JOBS: '/v1/match_jobs',
@@ -33,7 +33,7 @@ export const API_CONFIG = {
 
     // Auth endpoints (from Job Applier Agent)
     LOGIN: '/v1/auth/login',
-    SIGNUP: '/v1/auth/signup',
+    SIGNUP: '/v1/auth/register',
     REFRESH_TOKEN: '/v1/auth/refresh',
   }
 };

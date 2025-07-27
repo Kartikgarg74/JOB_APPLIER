@@ -19,6 +19,8 @@ class LearningAgent:
     """
     def __init__(self):
         self.application_data: List[Dict[str, Any]] = []  # Stores application features and outcomes
+        self._ml_model = None
+        self._ml_encoders = None
         logger.info("LearningAgent initialized.")
 
     def add_application_result(self, features: FeatureData, success: bool) -> None:
@@ -73,41 +75,118 @@ class LearningAgent:
         logger.info(f"Success rates by feature: {success_rates}")
         return success_rates
 
+    def predict_success_probability(self, features: FeatureData) -> float:
+        """
+        Predict the probability of success for a given set of features.
+
+        Args:
+            features: FeatureData object containing application features.
+
+        Returns:
+            Probability of success (0.0 to 1.0).
+        """
+        if not self.application_data:
+            logger.warning("No application data available for prediction.")
+            return 0.5  # Default to 50% if no data
+
+        # Try ML model first if available
+        if self._ml_model is not None and self._ml_encoders is not None:
+            try:
+                return self._predict_with_ml_model(features)
+            except Exception as e:
+                logger.warning(f"ML model prediction failed: {e}")
+
+        # Fallback to success rate analysis
+        return self._predict_with_success_rates(features)
+
+    def _predict_with_ml_model(self, features: FeatureData) -> float:
+        """Predict using trained ML model."""
+        try:
+            from sklearn.preprocessing import MultiLabelBinarizer, LabelEncoder
+            import numpy as np
+
+            # Encode features using trained encoders
+            skills_encoded = self._ml_encoders["mlb"].transform([features.skills])
+            job_type_encoded = self._ml_encoders["le_job_type"].transform([features.job_type]).reshape(1, -1)
+            company_encoded = self._ml_encoders["le_company"].transform([features.company]).reshape(1, -1)
+            location_encoded = self._ml_encoders["le_location"].transform([features.location]).reshape(1, -1)
+
+            # Concatenate features
+            X = np.hstack([skills_encoded, job_type_encoded, company_encoded, location_encoded])
+
+            # Predict probability
+            prob = self._ml_model.predict_proba(X)[0][1]  # Probability of success
+            return float(prob)
+        except Exception as e:
+            logger.error(f"Error in ML model prediction: {e}")
+            return 0.5
+
+    def _predict_with_success_rates(self, features: FeatureData) -> float:
+        """Predict using success rate analysis."""
+        rates = self.analyze_patterns()
+
+        # Calculate average success rate for the given features
+        feature_scores = []
+
+        # Skills score
+        skill_scores = [rates.get("skills", {}).get(skill, 0.5) for skill in features.skills]
+        if skill_scores:
+            feature_scores.append(sum(skill_scores) / len(skill_scores))
+
+        # Job type score
+        job_type_score = rates.get("job_type", {}).get(features.job_type, 0.5)
+        feature_scores.append(job_type_score)
+
+        # Company score
+        company_score = rates.get("company", {}).get(features.company, 0.5)
+        feature_scores.append(company_score)
+
+        # Location score
+        location_score = rates.get("location", {}).get(features.location, 0.5)
+        feature_scores.append(location_score)
+
+        # Return average score
+        return sum(feature_scores) / len(feature_scores) if feature_scores else 0.5
+
     def adjust_recommendations(self) -> Dict[str, Any]:
         """Adjust job matching criteria based on learned patterns or model predictions."""
         # Try to use ML model if available
-        if hasattr(self, '_ml_model') and hasattr(self, '_ml_encoders'):
-            # Recommend top skills/job types/companies/locations with highest model coefficients
-            model = self._ml_model
-            enc = self._ml_encoders
-            coef = model.coef_[0]
-            # Get top skills
-            skill_coefs = coef[:len(enc['mlb'].classes_)]
-            top_skill_indices = skill_coefs.argsort()[-3:][::-1]
-            top_skills = [enc['mlb'].classes_[i] for i in top_skill_indices]
-            # Get top job type
-            jt_start = len(enc['mlb'].classes_)
-            jt_end = jt_start + len(enc['le_job_type'].classes_)
-            jt_coefs = coef[jt_start:jt_end]
-            top_jt = enc['le_job_type'].classes_[jt_coefs.argmax()]
-            # Get top company
-            comp_start = jt_end
-            comp_end = comp_start + len(enc['le_company'].classes_)
-            comp_coefs = coef[comp_start:comp_end]
-            top_comp = enc['le_company'].classes_[comp_coefs.argmax()]
-            # Get top location
-            loc_start = comp_end
-            loc_end = loc_start + len(enc['le_location'].classes_)
-            loc_coefs = coef[loc_start:loc_end]
-            top_loc = enc['le_location'].classes_[loc_coefs.argmax()]
-            recommendations = {
-                "top_skills": top_skills,
-                "top_job_type": top_jt,
-                "top_company": top_comp,
-                "top_location": top_loc
-            }
-            logger.info(f"Adjusted recommendations (ML): {recommendations}")
-            return recommendations
+        if self._ml_model is not None and self._ml_encoders is not None:
+            try:
+                # Recommend top skills/job types/companies/locations with highest model coefficients
+                model = self._ml_model
+                enc = self._ml_encoders
+                coef = model.coef_[0]
+                # Get top skills
+                skill_coefs = coef[:len(enc['mlb'].classes_)]
+                top_skill_indices = skill_coefs.argsort()[-3:][::-1]
+                top_skills = [enc['mlb'].classes_[i] for i in top_skill_indices]
+                # Get top job type
+                jt_start = len(enc['mlb'].classes_)
+                jt_end = jt_start + len(enc['le_job_type'].classes_)
+                jt_coefs = coef[jt_start:jt_end]
+                top_jt = enc['le_job_type'].classes_[jt_coefs.argmax()]
+                # Get top company
+                comp_start = jt_end
+                comp_end = comp_start + len(enc['le_company'].classes_)
+                comp_coefs = coef[comp_start:comp_end]
+                top_comp = enc['le_company'].classes_[comp_coefs.argmax()]
+                # Get top location
+                loc_start = comp_end
+                loc_end = loc_start + len(enc['le_location'].classes_)
+                loc_coefs = coef[loc_start:loc_end]
+                top_loc = enc['le_location'].classes_[loc_coefs.argmax()]
+                recommendations = {
+                    "top_skills": top_skills,
+                    "top_job_type": top_jt,
+                    "top_company": top_comp,
+                    "top_location": top_loc
+                }
+                logger.info(f"Adjusted recommendations (ML): {recommendations}")
+                return recommendations
+            except Exception as e:
+                logger.warning(f"ML model recommendation failed: {e}")
+
         # Fallback: use success rates
         rates = self.analyze_patterns()
         recommendations = {
@@ -161,6 +240,26 @@ class LearningAgent:
         }
         return model
 
+    def get_learning_stats(self) -> Dict[str, Any]:
+        """Get statistics about the learning agent's data and performance."""
+        if not self.application_data:
+            return {"total_applications": 0, "success_rate": 0.0, "model_trained": False}
+
+        total_applications = len(self.application_data)
+        successful_applications = sum(1 for entry in self.application_data if entry["success"])
+        success_rate = successful_applications / total_applications
+
+        return {
+            "total_applications": total_applications,
+            "successful_applications": successful_applications,
+            "success_rate": success_rate,
+            "model_trained": self._ml_model is not None,
+            "unique_skills": len(set(skill for entry in self.application_data for skill in entry["features"].skills)),
+            "unique_companies": len(set(entry["features"].company for entry in self.application_data)),
+            "unique_locations": len(set(entry["features"].location for entry in self.application_data))
+        }
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     agent = LearningAgent()
@@ -170,11 +269,23 @@ if __name__ == "__main__":
     agent.add_application_result(FeatureData(["Python", "ML"], "Internship", "Google", "NYC"), True)
     agent.add_application_result(FeatureData(["JavaScript", "React"], "Contract", "Meta", "Remote"), False)
     agent.add_application_result(FeatureData(["Python", "SQL"], "Full-Time", "Google", "NYC"), True)
+
     # Analyze patterns
-    agent.analyze_patterns()
+    patterns = agent.analyze_patterns()
+    print(f"Patterns: {patterns}")
+
     # Fit model
     agent.fit_predictive_model()
+
+    # Test prediction
+    test_features = FeatureData(["Python", "SQL"], "Full-Time", "Google", "NYC")
+    probability = agent.predict_success_probability(test_features)
+    print(f"Success probability for test features: {probability:.2f}")
+
     # Adjust recommendations
     recs = agent.adjust_recommendations()
-    print("\nRecommended features for next applications:")
-    print(recs)
+    print(f"Recommended features: {recs}")
+
+    # Get stats
+    stats = agent.get_learning_stats()
+    print(f"Learning stats: {stats}")

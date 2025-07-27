@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Menu as MenuIcon,
   X as CloseIcon,
+  User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -26,6 +27,7 @@ const navigation = [
   { name: "ATS Checker", href: "/ats-checker", icon: FileCheck },
   { name: "Resume Editor", href: "/resume-editor", icon: Edit3 },
   { name: "Applications", href: "/applications", icon: Clock },
+  { name: "Profile", href: "/profile", icon: User },
   { name: "Settings", href: "/settings", icon: Settings },
 ]
 

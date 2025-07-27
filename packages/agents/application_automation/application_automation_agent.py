@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import json
 import datetime
 
@@ -51,6 +51,234 @@ class ApplicationAutomationAgent:
         except Exception as e:
             self.logger.error(f"Failed to log application attempt: {e}")
 
+    def get_application_status(self, job_url: str) -> Dict[str, Any]:
+        """
+        Check the status of a job application by visiting the application page.
+
+        Args:
+            job_url: URL of the job application.
+
+        Returns:
+            Dictionary containing application status information.
+        """
+        self.logger.info(f"Checking application status for: {job_url}")
+
+        try:
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+
+                # Navigate to the job URL
+                page.goto(job_url, wait_until="networkidle")
+
+                # Check for common application status indicators
+                status_info = {
+                    "url": job_url,
+                    "timestamp": datetime.datetime.utcnow().isoformat(),
+                    "status": "unknown",
+                    "details": {}
+                }
+
+                # Check for LinkedIn application status
+                if "linkedin.com" in job_url:
+                    status_info.update(self._check_linkedin_status(page))
+                elif "indeed.com" in job_url:
+                    status_info.update(self._check_indeed_status(page))
+                else:
+                    status_info.update(self._check_generic_status(page))
+
+                browser.close()
+                return status_info
+
+        except Exception as e:
+            self.logger.error(f"Error checking application status: {e}")
+            return {
+                "url": job_url,
+                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "status": "error",
+                "details": {"error": str(e)}
+            }
+
+    def _check_linkedin_status(self, page: Any) -> Dict[str, Any]:
+        """Check LinkedIn application status."""
+        try:
+            # Look for common LinkedIn status indicators
+            status_selectors = [
+                "text=Applied",
+                "text=Application submitted",
+                "text=Application received",
+                "text=Under review",
+                "text=Application viewed"
+            ]
+
+            for selector in status_selectors:
+                if page.locator(selector).count() > 0:
+                    return {
+                        "status": "applied",
+                        "platform": "linkedin",
+                        "details": {"status_text": page.locator(selector).first.text_content()}
+                    }
+
+            # Check if we can still apply
+            if page.locator("text=Apply").count() > 0:
+                return {
+                    "status": "not_applied",
+                    "platform": "linkedin",
+                    "details": {"can_apply": True}
+                }
+
+            return {
+                "status": "unknown",
+                "platform": "linkedin",
+                "details": {"message": "Could not determine application status"}
+            }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "platform": "linkedin",
+                "details": {"error": str(e)}
+            }
+
+    def _check_indeed_status(self, page: Any) -> Dict[str, Any]:
+        """Check Indeed application status."""
+        try:
+            # Look for Indeed status indicators
+            status_selectors = [
+                "text=Applied",
+                "text=Application submitted",
+                "text=You applied"
+            ]
+
+            for selector in status_selectors:
+                if page.locator(selector).count() > 0:
+                    return {
+                        "status": "applied",
+                        "platform": "indeed",
+                        "details": {"status_text": page.locator(selector).first.text_content()}
+                    }
+
+            # Check if we can still apply
+            if page.locator("text=Apply").count() > 0:
+                return {
+                    "status": "not_applied",
+                    "platform": "indeed",
+                    "details": {"can_apply": True}
+                }
+
+            return {
+                "status": "unknown",
+                "platform": "indeed",
+                "details": {"message": "Could not determine application status"}
+            }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "platform": "indeed",
+                "details": {"error": str(e)}
+            }
+
+    def _check_generic_status(self, page: Any) -> Dict[str, Any]:
+        """Check generic application status."""
+        try:
+            # Look for common application status indicators
+            status_keywords = [
+                "applied", "submitted", "received", "review", "viewed",
+                "application", "status", "tracking"
+            ]
+
+            page_text = page.content().lower()
+
+            for keyword in status_keywords:
+                if keyword in page_text:
+                    return {
+                        "status": "applied",
+                        "platform": "generic",
+                        "details": {"found_keyword": keyword}
+                    }
+
+            # Check if we can still apply
+            if page.locator("text=Apply").count() > 0 or page.locator("text=Submit").count() > 0:
+                return {
+                    "status": "not_applied",
+                    "platform": "generic",
+                    "details": {"can_apply": True}
+                }
+
+            return {
+                "status": "unknown",
+                "platform": "generic",
+                "details": {"message": "Could not determine application status"}
+            }
+
+        except Exception as e:
+            return {
+                "status": "error",
+                "platform": "generic",
+                "details": {"error": str(e)}
+            }
+
+    def get_application_history(self) -> List[Dict[str, Any]]:
+        """
+        Get the history of all application attempts.
+
+        Returns:
+            List of application log entries.
+        """
+        try:
+            log_path = "application_log.json"
+            with open(log_path, "r") as f:
+                logs = json.load(f)
+            return logs
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.logger.warning("No application log found.")
+            return []
+
+    def get_application_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about application attempts.
+
+        Returns:
+            Dictionary containing application statistics.
+        """
+        logs = self.get_application_history()
+
+        if not logs:
+            return {
+                "total_applications": 0,
+                "successful_applications": 0,
+                "failed_applications": 0,
+                "success_rate": 0.0,
+                "platforms": {},
+                "recent_applications": []
+            }
+
+        total = len(logs)
+        successful = sum(1 for log in logs if "success" in log.get("result", "").lower())
+        failed = total - successful
+        success_rate = (successful / total) * 100 if total > 0 else 0
+
+        # Count by platform
+        platforms = {}
+        for log in logs:
+            platform = log.get("platform", "unknown")
+            platforms[platform] = platforms.get(platform, 0) + 1
+
+        # Get recent applications (last 10)
+        recent = sorted(logs, key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
+
+        return {
+            "total_applications": total,
+            "successful_applications": successful,
+            "failed_applications": failed,
+            "success_rate": round(success_rate, 2),
+            "platforms": platforms,
+            "recent_applications": recent
+        }
+
     @retry(max_retries=3, initial_delay=2, backoff_factor=2)
     def apply_for_job(
         self,
@@ -69,6 +297,9 @@ class ApplicationAutomationAgent:
         Returns:
             True if the application was submitted successfully, False otherwise.
         """
+        if not job_data or not isinstance(job_data, dict):
+            self.logger.error("Invalid job_data provided. Cannot proceed with application.")
+            return False
         self.logger.info(
             f"Attempting to apply for job: {job_data.get('title')} at {job_data.get('company')}"
         )

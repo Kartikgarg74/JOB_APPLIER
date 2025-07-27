@@ -1,0 +1,42 @@
+[
+  {
+    "timestamp": "2025-07-26T19:09:33.238662",
+    "platform": "unknown",
+    "title": "Software Engineer",
+    "company": "Google",
+    "url": null,
+    "result": "failure: no url"
+  },
+  {
+    "timestamp": "2025-07-26T19:10:26.479132",
+    "platform": "unknown",
+    "title": "Software Engineer",
+    "company": "Google",
+    "url": null,
+    "result": "failure: no url"
+  },
+  {
+    "timestamp": "2025-07-26T19:11:13.175854",
+    "platform": "unknown",
+    "title": "Software Engineer",
+    "company": "Google",
+    "url": null,
+    "result": "failure: no url"
+  },
+  {
+    "timestamp": "2025-07-26T19:11:13.176586",
+    "platform": "unknown",
+    "title": null,
+    "company": null,
+    "url": null,
+    "result": "failure: no url"
+  },
+  {
+    "timestamp": "2025-07-26T19:11:46.095910",
+    "platform": "unknown",
+    "title": "Software Engineer",
+    "company": "Google",
+    "url": null,
+    "result": "failure: no url"
+  }
+]
