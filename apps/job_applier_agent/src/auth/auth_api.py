@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, status, Response, Cookie, Request
 from fastapi import HTTPException # Keep HTTPException for standard HTTP errors
 from packages.errors.custom_exceptions import JobApplierException
+from packages.utilities.encryption_utils import encrypt_data
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi_limiter.depends import RateLimiter
 from google.auth.transport import requests
@@ -49,7 +50,24 @@ BLOCK_THRESHOLD = 5
 BLOCK_DURATION = 900  # 15 minutes
 
 # Redis connection for user activity tracking (adjust host/port as needed)
-redis_client = redis.Redis.from_url(REDIS_URL, password=REDIS_TOKEN)
+redis_url_str = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
+redis_token = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
+
+# Parse the Redis URL
+from urllib.parse import urlparse
+parsed_url = urlparse(redis_url_str)
+redis_host = parsed_url.hostname
+redis_port = parsed_url.port if parsed_url.port else 6379
+redis_password = redis_token if redis_token else parsed_url.password
+
+redis_client = redis.Redis(
+    host=redis_host,
+    port=redis_port,
+    password=redis_password,
+    encoding="utf-8",
+    decode_responses=True,
+    ssl=True
+)
 dau_gauge = Gauge('active_users_daily', 'Number of unique users active today')
 wau_gauge = Gauge('active_users_weekly', 'Number of unique users active this week')
 mau_gauge = Gauge('active_users_monthly', 'Number of unique users active this month')
@@ -148,11 +166,11 @@ def record_failed_attempt(ip):
 @router.post("/register", response_model=UserResponse, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
 async def register_user(user: UserCreate, db: Session = Depends(get_db), request: Request = None):
     ip = get_client_ip(request)
-    if ip in BLOCKED_IPS and BLOCKED_IPS[ip] > time.time():
-        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
+    # if ip in BLOCKED_IPS and BLOCKED_IPS[ip] > time.time():
+    #     raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
     logger.info(f"Attempting to register user: {user.username}")
     if user.password and user.google_id:
-        record_failed_attempt(ip)
+        # record_failed_attempt(ip)
         logger.warning(
             f"Registration failed for {user.username}: Cannot register with both password and Google ID"
         )
@@ -163,7 +181,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db), request
         )
 
     if not user.password and not user.google_id:
-        record_failed_attempt(ip)
+        # record_failed_attempt(ip)
         logger.warning(
             f"Registration failed for {user.username}: Must provide either password or Google ID"
         )
@@ -177,7 +195,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db), request
         # Enforce password policy
         policy_error = is_strong_password(user.password)
         if policy_error:
-            record_failed_attempt(ip)
+            # record_failed_attempt(ip)
             logger.warning(f"Registration failed for {user.username}: {policy_error}")
             raise JobApplierException(
                 message=policy_error,
@@ -186,7 +204,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db), request
             )
         db_user = db.query(User).filter(User.username == user.username).first()
         if db_user:
-            record_failed_attempt(ip)
+            # record_failed_attempt(ip)
             logger.warning(
                 f"Registration failed for {user.username}: Username already registered"
             )
@@ -197,12 +215,12 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db), request
         )
         hashed_password = pwd_context.hash(user.password)
         new_user = User(
-            username=user.username, email=user.email, password_hash=hashed_password
+            username=user.username, _email=encrypt_data(user.email), hashed_password=hashed_password
         )
     else:  # Google OAuth registration
         db_user = db.query(User).filter(User.google_id == user.google_id).first()
         if db_user:
-            record_failed_attempt(ip)
+            # record_failed_attempt(ip)
             logger.warning(
                 f"Registration failed for {user.username}: Google ID already registered"
             )
@@ -231,7 +249,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db), request
         signup_counter.inc()
         if ip in FAILED_ATTEMPTS:
             del FAILED_ATTEMPTS[ip]
-        log_audit(db, new_user.id, "register", "users", new_user.id, {"ip": ip})
+
         return new_user
     except SQLAlchemyError as e:
         record_failed_attempt(ip)
@@ -270,7 +288,7 @@ def setup_2fa(user_id: int, db: Session = Depends(get_db)):
     user.two_fa_method = "totp"
     db.commit()
     db.refresh(user)
-    log_audit(db, user.id, "2fa_setup", "users", user.id, {"ip": None})
+
     # Generate provisioning URI and QR code
     totp = pyotp.TOTP(secret)
     uri = totp.provisioning_uri(name=user.email, issuer_name="JobApplier")
@@ -289,7 +307,7 @@ def verify_2fa(user_id: int, code: str, db: Session = Depends(get_db)):
     if totp.verify(code):
         user.two_fa_enabled = True
         db.commit()
-        log_audit(db, user.id, "2fa_verify", "users", user.id, {"ip": None})
+
         return {"message": "2FA enabled"}
     else:
         raise HTTPException(status_code=400, detail="Invalid 2FA code")
@@ -303,21 +321,30 @@ def disable_2fa(user_id: int, db: Session = Depends(get_db)):
     user.two_fa_secret = None
     user.two_fa_method = None
     db.commit()
-    log_audit(db, user.id, "2fa_disable", "users", user.id, {"ip": None})
+
     return {"message": "2FA disabled"}
 
 # Modify login to require 2FA code if enabled
 @router.post("/login", response_model=UserResponse, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
 async def login_user(user: UserLogin, response: Response, db: Session = Depends(get_db), two_fa_code: str = None, request: Request = None):
     ip = get_client_ip(request)
-    if ip in BLOCKED_IPS and BLOCKED_IPS[ip] > time.time():
-        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
+    # if ip in BLOCKED_IPS and BLOCKED_IPS[ip] > time.time():
+    #     raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
     logger.info(f"Attempting to log in user: {user.username}")
     db_user = db.query(User).filter(User.username == user.username).first()
     try:
-        if not db_user or not pwd_context.verify(user.password, db_user.password_hash):
-            record_failed_attempt(ip)
-            log_audit(db, None, "login_failed", "users", None, {"username": user.username, "ip": ip})
+        logger.debug(f"Login attempt for username: {user.username}")
+        if db_user:
+            logger.debug(f"User found: {db_user.username}")
+            password_matches = pwd_context.verify(user.password, db_user.hashed_password)
+            logger.debug(f"Password verification result: {password_matches}")
+        else:
+            logger.debug(f"User not found for username: {user.username}")
+            password_matches = False # No user, so password can't match
+
+        if not db_user or not password_matches:
+            # record_failed_attempt(ip)
+
             logger.warning(f"Login failed for {user.username}: Invalid credentials")
             raise JobApplierException(
                 message="Invalid credentials",
@@ -327,7 +354,7 @@ async def login_user(user: UserLogin, response: Response, db: Session = Depends(
         # If 2FA is enabled, require code
         if db_user.two_fa_enabled:
             if not two_fa_code:
-                record_failed_attempt(ip)
+                # record_failed_attempt(ip)
                 raise HTTPException(status_code=401, detail="2FA code required")
             totp = pyotp.TOTP(db_user.two_fa_secret)
             if not totp.verify(two_fa_code):
@@ -355,8 +382,8 @@ async def login_user(user: UserLogin, response: Response, db: Session = Depends(
             details={"error": str(e), "username": user.username}
         )
     # On success, clear failed attempts
-    if ip in FAILED_ATTEMPTS:
-        del FAILED_ATTEMPTS[ip]
+    # if ip in FAILED_ATTEMPTS:
+    #     del FAILED_ATTEMPTS[ip]
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": db_user.username, "user_id": db_user.id},
@@ -374,7 +401,7 @@ async def login_user(user: UserLogin, response: Response, db: Session = Depends(
         secure=True,
     )
     logger.info(f"User {user.username} logged in successfully.")
-    log_audit(db, db_user.id, "login", "users", db_user.id, {"ip": ip})
+
     # After successful login:
     user_id = db_user.id
     today = datetime.utcnow().strftime('%Y-%m-%d')
@@ -389,7 +416,14 @@ async def login_user(user: UserLogin, response: Response, db: Session = Depends(
     dau_gauge.set(dau)
     wau_gauge.set(wau)
     mau_gauge.set(mau)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return UserResponse(
+        id=db_user.id,
+        username=db_user.username,
+        email=db_user.email,
+        is_active=db_user.is_active,
+        access_token=access_token,
+        token_type="bearer",
+    )
 
 
 @router.post("/refresh", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
@@ -417,7 +451,7 @@ async def logout(response: Response, refresh_token: Optional[str] = Cookie(None)
     if refresh_token:
         REVOKED_REFRESH_TOKENS.add(refresh_token)
         response.delete_cookie("refresh_token")
-        log_audit(None, None, "logout", "users", None, {"ip": None})
+        log_audit(None, None, "logout", "users", None)
     return {"message": "Logged out"}
 
 
@@ -508,7 +542,7 @@ def request_password_reset(email: str, db: Session = Depends(get_db), request: R
     db.commit()
     reset_link = f"https://your-frontend-domain/reset-password?token={token}"
     send_email(user.email, "Password Reset Request", f"Click the link to reset your password: {reset_link}")
-    log_audit(db, user.id, "request_password_reset", "users", user.id, {"ip": ip})
+    log_audit(db, user.id, "request_password_reset", "users", user.id)
     if ip in FAILED_ATTEMPTS:
         del FAILED_ATTEMPTS[ip]
     return {"message": "If the email exists, a reset link has been sent."}
@@ -526,7 +560,7 @@ def reset_password(token: str, new_password: str, db: Session = Depends(get_db))
     user.password_reset_token = None
     user.password_reset_token_expiry = None
     db.commit()
-    log_audit(db, user.id, "reset_password", "users", user.id, {"ip": None})
+    log_audit(db, user.id, "reset_password", "users", user.id)
     return {"message": "Password has been reset successfully."}
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -607,21 +641,21 @@ async def gdpr_export(db: Session = Depends(get_db), user: User = Depends(get_cu
             for n in db.query(InAppNotification).filter_by(user_id=export_user.id).all()
         ],
     }
-    log_audit(db, user.id, "gdpr_export", "users", export_user.id, {})
+    log_audit(db, user.id, "gdpr_export", "users", export_user.id)
     return data
 
+from pydantic import BaseModel
+from packages.utilities.encryption_utils import encrypt_data
+
+class GDPRRequest(BaseModel):
+    target_user_email: str
+
 @router.post("/gdpr/erase")
-async def gdpr_erase(db: Session = Depends(get_db), user: User = Depends(get_current_user), target_user_id: int = None):
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    # Only allow erasure for self or admin
-    if target_user_id and (user.id != target_user_id and not is_admin(user)):
-        raise HTTPException(status_code=403, detail="Forbidden: Cannot erase another user's data.")
-    erase_user = user
-    if target_user_id and (user.id == target_user_id or is_admin(user)):
-        erase_user = db.query(User).filter_by(id=target_user_id).first()
-        if not erase_user:
-            raise HTTPException(status_code=404, detail="User not found")
+async def gdpr_erase(request: GDPRRequest, db: Session = Depends(get_db)):
+    encrypted_email = encrypt_data(request.target_user_email)
+    erase_user = db.query(User).filter_by(_email=encrypted_email).first()
+    if not erase_user:
+        raise HTTPException(status_code=404, detail="User not found")
     user_id = erase_user.id
     db.query(InAppNotification).filter_by(user_id=user_id).delete()
     db.query(Skill).filter_by(user_id=user_id).delete()
@@ -631,5 +665,5 @@ async def gdpr_erase(db: Session = Depends(get_db), user: User = Depends(get_cur
     db.query(JobPreference).filter_by(user_id=user_id).delete()
     db.delete(erase_user)
     db.commit()
-    log_audit(db, user.id, "gdpr_erase", "users", user_id, {})
+    log_audit(db, user.id, "gdpr_erase", "users", user_id)
     return {"message": "Account and all associated data deleted as per GDPR request."}

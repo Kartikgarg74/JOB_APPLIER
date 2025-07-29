@@ -41,15 +41,19 @@ class Settings(BaseSettings):
         default=None, description="API key for job board services"
     )
 
+    GEMINI_API_KEY: Optional[str] = Field(
+        default=None, description="API key for Gemini services"
+    )
+
     DATABASE_URL: str = Field(
         default="sqlite:///./applications.db", description="Database connection URL"
     )
 
     CELERY_BROKER_URL: str = Field(
-        default=os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0"), description="Celery broker URL"
+        default="redis://localhost:6379/0", description="Celery broker URL"
     )
     CELERY_RESULT_BACKEND: str = Field(
-        default=os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0"), description="Celery result backend URL"
+        default="redis://localhost:6379/0", description="Celery result backend URL"
     )
 
     MAILGUN_API_KEY: Optional[str] = Field(

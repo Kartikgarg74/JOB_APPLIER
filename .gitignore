@@ -63,6 +63,13 @@ Thumbs.db
 # Misc
 *.bak
 *.swp
+*.tmp
+*.temp
+*.sublime-project
+*.sublime-workspace
+.history/
+.DS_Store
+docker-compose.log
 
 # Ignore compiled frontend assets
 apps/dashboard/public/sw.js

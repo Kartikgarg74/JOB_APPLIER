@@ -3,12 +3,16 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, Gauge, Histogram
 from fastapi import Response as FastAPIResponse
 from contextlib import asynccontextmanager
 import logging
 import time
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
@@ -53,6 +57,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 class PerformanceLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -122,7 +134,7 @@ async def validation_exception_handler(request, exc):
     logging.error(f"Validation Error: {exc.errors()}", exc_info=True)
     return JSONResponse(
         status_code=422,
-        content={"message": "Validation Error", "details": exc.errors()},
+        content={"message": "Validation Error", "details": [err for err in exc.errors()]},
     )
 
 @app.get("/")

@@ -22,7 +22,7 @@ def setup_logging(log_file: str = "output/centralized.log"):
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir, exist_ok=True)
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
     formatter = JsonFormatter()
 
     # Stream handler (stdout)
@@ -37,7 +37,7 @@ def setup_logging(log_file: str = "output/centralized.log"):
 
     # Silence overly verbose loggers
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    # logging.getLogger("uvicorn").setLevel(logging.WARNING) # Temporarily disable to see debug logs
 
 # Call setup_logging() in your main entrypoint (main.py) to activate centralized logging.
 

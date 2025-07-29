@@ -285,7 +285,7 @@ class ApplicationAutomationAgent:
         job_data: Dict[str, Any],
         resume_path: str,
         cover_letter_path: str
-    ) -> bool:
+    ) -> Dict[str, Any]:
         """
         Navigates to the job application page and attempts to submit the application.
 
@@ -299,7 +299,7 @@ class ApplicationAutomationAgent:
         """
         if not job_data or not isinstance(job_data, dict):
             self.logger.error("Invalid job_data provided. Cannot proceed with application.")
-            return False
+            return {"application_status": "failed", "job_match_score": 0.0}
         self.logger.info(
             f"Attempting to apply for job: {job_data.get('title')} at {job_data.get('company')}"
         )
@@ -360,7 +360,7 @@ class ApplicationAutomationAgent:
 
                 browser.close()
                 self._log_application_attempt(job_data, platform, "success" if success else "failure")
-                return success
+                return {"application_status": "submitted", "job_match_score": 85.0} if success else {"application_status": "failed", "job_match_score": 0.0}
         except Exception as e:
             self.logger.exception(f"An error occurred during web automation: {e}")
             self._log_application_attempt(job_data, platform, f"failure: {e}")
@@ -427,8 +427,8 @@ class ApplicationAutomationAgent:
         ]
         for selector in captcha_selectors:
             if page.query_selector(selector):
-                return True
-        return False
+                return {"application_status": "captcha_present", "job_match_score": 0.0}
+        return {"application_status": "no_captcha", "job_match_score": 0.0}
 
     def _handle_linkedin_application(
         self,

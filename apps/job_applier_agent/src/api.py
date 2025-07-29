@@ -1,5 +1,6 @@
 import os
 import shutil
+import io
 import logging
 from typing import Dict, Any, List
 import json
@@ -21,7 +22,7 @@ from packages.agents.agent_manager import AgentManager
 
 from packages.config.settings import settings
 
-from packages.message_queue.tasks import (
+from apps.job_applier_agent.src.tasks import (
     process_resume_upload_task,
     calculate_ats_score_task,
     run_unicorn_agent_task,
@@ -39,14 +40,18 @@ from packages.utilities.encryption_utils import fernet
 from prometheus_client import Counter
 from packages.agents.job_scraper.job_scraper_agent import JobScraperAgent
 from packages.utilities.parsers.resume_parser import extract_text_from_resume
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi import APIRouter
+
 from apps.job_applier_agent.src.metrics import job_apply_counter, file_upload_counter, file_download_counter
 from packages.database.job_data_model import JobListing, JobDatabase
 from packages.database.config import SessionLocal
 from fastapi import Query
 
 job_db = JobDatabase()
+from packages.database.models import User, JobApplication, FileMetadata, InAppNotification
+
+
 
 class JobCreateRequest(BaseModel):
     title: str
@@ -69,13 +74,125 @@ class JobUpdateRequest(BaseModel):
     posting_date: datetime = None
     url: str = None
     source: str = None
-    is_applied: bool = None
-    application_status: str = None
+
+
+# Pydantic Models for new endpoints
+
+# Profile
+class ProfileUpdate(BaseModel):
+    username: str | None = None
+    image: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    portfolio_url: str | None = None
+    personal_website: str | None = None
+    linkedin_profile: str | None = None
+    github_profile: str | None = None
+    years_of_experience: int | None = None
+
+
+class ProfileResponse(BaseModel):
+    id: int
+    username: str
+    email: str | None
+    google_id: str | None
+    image: str | None
+    is_active: bool
+    created_at: datetime
+    phone: str | None
+    address: str | None
+    portfolio_url: str | None
+    personal_website: str | None
+    linkedin_profile: str | None
+    github_profile: str | None
+    years_of_experience: int | None
+
+    class Config:
+        orm_mode = True
+
+
+# Resumes (FileMetadata)
+class ResumeResponse(BaseModel):
+    id: int
+    user_id: int
+    filename: str
+    file_type: str
+    size: int
+    version: int
+    uploaded_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+from fastapi import UploadFile, File
+
+# Job Applications
+class JobApplicationCreate(BaseModel):
+    user_id: int
+    job_id: str
+    status: str = "applied"
+    resume_id: int | None = None
+    cover_letter: str | None = None
+
+
+class JobApplicationUpdate(BaseModel):
+    status: str | None = None
+    resume_id: int | None = None
+    cover_letter: str | None = None
+
+
+class JobApplicationResponse(BaseModel):
+    id: int
+    user_id: int
+    job_id: str
+    status: str
+    applied_at: datetime
+    updated_at: datetime
+    resume_id: int | None
+    cover_letter: str | None
+    extra_data: dict | None
+
+    class Config:
+        orm_mode = True
+
+
+class JobListingResponse(BaseModel):
+    id: str
+    title: str
+    company: str
+    location: str
+    description: str
+    requirements: str | None
+    salary: str | None
+    posting_date: datetime | None
+    url: str
+    source: str | None
+    date_discovered: datetime
+
+    class Config:
+        orm_mode = True
+
 
 # Redis cache setup
-REDIS_URL = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
-REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
-redis_cache = Redis.from_url(REDIS_URL, password=REDIS_TOKEN, decode_responses=True)
+redis_url_str = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
+redis_token = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
+
+# Parse the Redis URL
+from urllib.parse import urlparse
+parsed_url = urlparse(redis_url_str)
+redis_host = parsed_url.hostname
+redis_port = parsed_url.port if parsed_url.port else 6379
+redis_password = redis_token if redis_token else parsed_url.password
+
+redis_cache = Redis(
+        host=redis_host,
+        port=redis_port,
+        password=redis_password,
+        encoding="utf-8",
+        decode_responses=True,
+        ssl=True
+    )
 
 CACHE_TTL = 60  # seconds
 
@@ -94,22 +211,33 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    redis_instance = Redis.from_url(REDIS_URL, password=REDIS_TOKEN, decode_responses=True)
+    redis_instance = Redis.from_url(REDIS_URL, decode_responses=True)
     await FastAPILimiter.init(redis_instance)
     yield  # Startup complete, app runs here
     # (Optional) Add any cleanup code after yield
 
 app = FastAPI(lifespan=lifespan)
 
-v1_router = APIRouter(prefix="/v1")
-
-v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
-
-app.include_router(v1_router)
 
 
-# Placeholder for the JobApplierAgent instance
-# In a real application, you would initialize and manage the agent here.
+# Create routers for better organization
+applications_router = APIRouter(prefix="/applications", tags=["Applications"])
+resumes_router = APIRouter(prefix="/resumes", tags=["Resumes"])
+profile_router = APIRouter(prefix="/profile", tags=["User Profile"])
+notifications_router = APIRouter(prefix="/notifications", tags=["Notifications"])
+
+general_router = APIRouter()
+
+@resumes_router.post("/upload-resume", summary="Upload a resume file")
+async def upload_resume(file: UploadFile = File(...)):
+    # Placeholder for resume upload logic
+    return {"message": f"Resume '{file.filename}' uploaded successfully."}
+
+
+
+
+
+
 # For now, we'll simulate its state.
 job_applier_agent_status = {
     "workflow_running": False,
@@ -126,26 +254,25 @@ def get_file_manager():
 from packages.database.config import SessionLocal
 
 # Dependency to get ATSScorerAgent instance
-def get_ats_scorer_agent(db: Session = Depends(lambda: SessionLocal())):
+def get_ats_scorer_agent(db: Session = Depends(get_db)):
     agent_manager = AgentManager(db)
     return agent_manager.get_ats_scorer_agent()
 
 # Dependency to get ApplicationAutomationAgent instance
-def get_application_automation_agent(db: Session = Depends(lambda: SessionLocal())):
+def get_application_automation_agent(db: Session = Depends(get_db)):
     agent_manager = AgentManager(db)
     return agent_manager.get_application_automation_agent()
 
 # Dependency to get NotificationService instance
-def get_notification_service():
-    db_session = next(get_db())
-    return NotificationService(db_session=db_session)
+def get_notification_service(db: Session = Depends(get_db)):
+    return NotificationService(db_session=db)
 
 # Dependency to get UnicornAgent instance
-def get_unicorn_agent(db: Session = Depends(lambda: SessionLocal())):
+def get_unicorn_agent(db: Session = Depends(get_db)):
     return UnicornAgent(db)
 
 # Dependency to get InAppNotificationManager instance
-def get_in_app_notification_manager(db: Session = Depends(lambda: SessionLocal())):
+def get_in_app_notification_manager(db: Session = Depends(get_db)):
     return InAppNotificationManager(db)
 
 
@@ -168,38 +295,6 @@ class UnicornAgentRequest(BaseModel):
 class UnicornAgentResponse(BaseModel):
     status: str = Field(..., example="processing")
     # Add other response fields as needed
-async def apply_job(
-    request: UnicornAgentRequest,
-    notification_service: NotificationService = Depends(get_notification_service),
-):
-    logger.info(f"Received request to apply for job with Unicorn Agent.")
-    try:
-        # Offload to Celery task
-        task = run_unicorn_agent_task.delay(request.dict())
-
-        # Send initial notification that processing has started
-        await notification_service.send_notification(
-            recipient=request.user_profile.get("email"),
-            message="Your job application workflow has started processing.",
-            notification_type="email",
-            details={"subject": "Job Application Started", "task_id": task.id}
-        )
-
-        return {
-            "status": "processing",
-            "message": "Job application workflow has been queued for processing.",
-            "task_id": task.id
-        }
-    except Exception as e:
-        logger.error(f"Failed to queue job application: {e}", exc_info=True)
-        await notification_service.send_notification(
-            recipient=request.user_profile.get("email"),
-            message=f"Failed to queue job application: {e}",
-            notification_type="email",
-            details={"subject": "Job Application Queue Failed", "error": str(e)}
-        )
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
-
 
 class InAppNotificationResponse(BaseModel):
     id: int
@@ -210,7 +305,7 @@ class InAppNotificationResponse(BaseModel):
     created_at: str
 
 
-@v1_router.post(
+@applications_router.post(
     "/apply-job",
     response_model=UnicornAgentResponse,
     summary="Apply for Job using Unicorn Agent",
@@ -231,7 +326,7 @@ async def apply_job(
     logger.info(f"Received request to apply for job with Unicorn Agent.")
     try:
         # Offload to Celery task
-        task = run_unicorn_agent_task.delay(request.dict())
+        task = run_unicorn_agent_task.delay(request.model_dump())
 
         # Send initial notification that processing has started
         await notification_service.send_notification(
@@ -259,162 +354,21 @@ async def apply_job(
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
-class InAppNotificationResponse(BaseModel):
-    id: int
-    user_id: int
-    message: str
-    details: Dict[str, Any]
-    is_read: bool
-    created_at: str
-
-
-@v1_router.post(
-    "/apply-job",
-    response_model=UnicornAgentResponse,
-    summary="Apply for Job using Unicorn Agent",
-    description="Initiates the job application workflow using the Unicorn Agent.",
-    dependencies=[Depends(RateLimiter(times=1, seconds=5))]
-)
-async def apply_job(
-    request: UnicornAgentRequest,
-    notification_service: NotificationService = Depends(get_notification_service),
-):
-    logger.info(f"Received request to apply for job with Unicorn Agent.")
-    try:
-        # Offload to Celery task
-        task = run_unicorn_agent_task.delay(request.dict())
-
-        # Send initial notification that processing has started
-        await notification_service.send_notification(
-            recipient=request.user_profile.get("email"),
-            message="Your job application workflow has started processing.",
-            notification_type="email",
-            details={"subject": "Job Application Started", "task_id": task.id}
-        )
-
-        return {
-            "status": "processing",
-            "message": "Job application workflow has been queued for processing.",
-            "task_id": task.id
-        }
-    except Exception as e:
-        logger.error(f"Failed to queue job application: {e}", exc_info=True)
-        await notification_service.send_notification(
-            recipient=request.user_profile.get("email"),
-            message=f"Failed to queue job application: {e}",
-            notification_type="email",
-            details={"subject": "Job Application Queue Failed", "error": str(e)}
-        )
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
-
-
-
-
-
-@v1_router.post(
-    "/upload-resume",
-    response_model=UploadResumeResponse,
-    summary="Upload Resume",
-    description="Uploads a resume file (PDF or DOCX) for processing and user profile update.",
-    dependencies=[Depends(RateLimiter(times=1, seconds=5))]
-)
-async def upload_resume(
-    file: UploadFile = File(
-        ...,
-        description="The resume file to upload (PDF or DOCX).",
-        max_size=5 * 1024 * 1024,  # 5 MB limit
-    ),
-    file_manager: FileManagement = Depends(get_file_manager),
-    notification_service: NotificationService = Depends(get_notification_service),
-):
-    """Upload a resume file (PDF or DOCX)."""
-    file_upload_counter.inc()
-    logger.info(f"Received request to upload resume: {file.filename}")
-    allowed_extensions = ["pdf", "docx"]
-    file_extension = file.filename.split(".")[-1].lower()
-
-    if file_extension not in allowed_extensions:
-        logger.warning(f"Invalid file format for {file.filename}: {file_extension}")
-        error_message = "Invalid file format. Only PDF and DOCX are allowed."
-        await notification_service.send_notification(
-            recipient="user@example.com",  # Replace with actual user email/ID
-            message=f"Resume upload failed: {error_message}",
-            notification_type="email",
-            subject="Resume Upload Failed",
-        )
-        raise JobApplierException(
-            message=error_message,
-            status_code=400,
-            details={"file_extension": file_extension, "allowed_extensions": allowed_extensions}
-        )
-
-    try:
-        # Define a secure location to store resumes. Using settings.OUTPUT_DIR
-        resume_dir = os.path.join(settings.OUTPUT_DIR, "resumes")
-        os.makedirs(resume_dir, exist_ok=True)
-
-        file_location = os.path.join(resume_dir, file.filename)
-        logger.info(f"Saving encrypted resume to {file_location}")
-        # Encrypt file before saving
-        file_bytes = await file.read()
-        encrypted_bytes = fernet.encrypt(file_bytes)
-        with open(file_location, "wb") as buffer:
-            buffer.write(encrypted_bytes)
-
-        # Offload resume processing to a background task
-        process_resume_upload_task.delay(
-            file_location, file.content_type, settings.USER_PROFILE_PATH
-        )
-        logger.info(
-            f"Resume upload received and processing offloaded for: {file.filename}"
-        )
-        await notification_service.send_notification(
-            recipient="user@example.com",  # Replace with actual user email/ID
-            message=f"Your resume '{file.filename}' has been uploaded successfully and is being processed.",
-            notification_type="email",
-            subject="Resume Upload Successful",
-        )
-
-        return {
-            "status": "success",
-            "message": f"Resume uploaded successfully and processing started for: {file.filename}",
-            "path": file_location,
-        }
-    except JobApplierException as e:
-        await notification_service.send_notification(
-            recipient="user@example.com",  # Replace with actual user email/ID
-            message=f"Resume upload failed: {e.message}",
-            notification_type="email",
-            subject="Resume Upload Failed",
-        )
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        logger.error(f"Failed to upload resume: {e}", exc_info=True)
-        await notification_service.send_notification(
-            recipient="user@example.com",  # Replace with actual user email/ID
-            message=f"Resume upload failed due to an internal server error: {e}",
-            notification_type="email",
-            subject="Resume Upload Failed",
-        )
-        raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
-
-
-@v1_router.get(
-    "/notifications/{user_id}",
+@notifications_router.get(
+    "/",
     response_model=List[InAppNotificationResponse],
     summary="Get In-App Notifications",
     description="Retrieves a list of in-app notifications for a specific user.",
-    dependencies=[Depends(RateLimiter(times=5, seconds=10))]
 )
 async def get_in_app_notifications(
     user_id: int,
     limit: int = 10,
-    offset: int = 0,
+    skip: int = 0,
     in_app_notification_manager: InAppNotificationManager = Depends(get_in_app_notification_manager),
 ):
-    key = cache_key_builder("notifications", user_id, limit, offset)
+    key = cache_key_builder("notifications", user_id, limit, skip)
     async def fetch():
-        notifications = in_app_notification_manager.get_notifications_for_user(user_id, limit, offset)
+        notifications = in_app_notification_manager.get_notifications_for_user(user_id, limit, skip)
         return [
             InAppNotificationResponse(
                 id=n.id,
@@ -431,11 +385,10 @@ async def get_in_app_notifications(
     return response
 
 
-@v1_router.post(
-    "/notifications/{notification_id}/mark-read",
+@notifications_router.post(
+    "/{notification_id}/read",
     summary="Mark In-App Notification as Read",
     description="Marks a specific in-app notification as read.",
-    dependencies=[Depends(RateLimiter(times=5, seconds=10))]
 )
 async def mark_in_app_notification_read(
     notification_id: int,
@@ -452,11 +405,10 @@ async def mark_in_app_notification_read(
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
 
 
-@v1_router.delete(
-    "/notifications/{notification_id}",
+@notifications_router.delete(
+    "/{notification_id}",
     summary="Delete In-App Notification",
     description="Deletes a specific in-app notification.",
-    dependencies=[Depends(RateLimiter(times=5, seconds=10))]
 )
 async def delete_in_app_notification(
     notification_id: int,
@@ -471,58 +423,174 @@ async def delete_in_app_notification(
     except Exception as e:
         logger.error(f"Failed to delete in-app notification {notification_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
-        await notification_service.send_notification(
-            recipient="user@example.com",
-            message=f"Resume upload failed: {e.message}",
-            notification_type="email",
-            subject="Resume Upload Failed",
+
+
+@profile_router.get("/{user_id}", response_model=ProfileResponse, summary="Get user profile")
+async def get_profile(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@profile_router.put("/{user_id}", response_model=ProfileResponse, summary="Update user profile")
+async def update_profile(user_id: int, profile_data: ProfileUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_data = profile_data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@resumes_router.post("", response_model=ResumeResponse, summary="Upload a new resume")
+async def upload_resume(
+    file: UploadFile = File(..., description="The resume file (PDF or DOCX).", max_size=5 * 1024 * 1024),
+    user_id: int = Form(...), # In a real app, this would come from an auth dependency
+    db: Session = Depends(get_db)
+):
+    file_upload_counter.inc()
+    allowed_extensions = ["pdf", "docx"]
+    file_extension = file.filename.split(".")[-1].lower()
+    if file_extension not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Invalid file format. Only PDF and DOCX are allowed.")
+
+    try:
+        resume_dir = os.path.join(settings.OUTPUT_DIR, "resumes", str(user_id))
+        os.makedirs(resume_dir, exist_ok=True)
+        file_location = os.path.join(resume_dir, file.filename)
+
+        file_bytes = await file.read()
+        encrypted_bytes = fernet.encrypt(file_bytes)
+        with open(file_location, "wb") as buffer:
+            buffer.write(encrypted_bytes)
+
+        file_metadata = FileMetadata(
+            user_id=user_id,
+            filename=file.filename,
+            storage_path=file_location,
+            file_type='resume',
+            size=len(file_bytes),
+            is_encrypted=True
         )
-        raise e
-    except IOError as e:
-        logger.error(
-            f"File operation error during resume upload for {File.filename}: {e}",
-            exc_info=True,
-        )
-        error_message = f"File operation error: {e}"
-        await NotificationService.send_notification(
-            recipient="user@example.com",
-            message=f"Resume upload failed: {error_message}",
-            notification_type="email",
-            subject="Resume Upload Failed",
-        )
-        raise JobApplierException(
-            message=error_message,
-            status_code=500,
-            details={"filename": File.filename, "error": str(e)}
-        )
-    except NotificationError as e:
-        logger.error(
-            f"Notification error during resume upload for {File.filename}: {e}",
-            exc_info=True,
-        )
-        # Do not re-raise NotificationError as it's a secondary concern to the main operation
-        raise JobApplierException(
-            message="Resume uploaded, but notification failed.",
-            status_code=200, # Still a success from the user's perspective for the upload
-            details={"filename": File.filename, "notification_error": str(e)}
-        )
+        db.add(file_metadata)
+        db.commit()
+        db.refresh(file_metadata)
+
+        # Optional: Offload further processing
+        # process_resume_upload_task.delay(file_location, file.content_type, settings.USER_PROFILE_PATH)
+
+        return file_metadata
     except Exception as e:
-        logger.error(
-            f"An unexpected error occurred during resume upload for {File.filename}: {e}",
-            exc_info=True,
-        )
-        error_message = f"An unexpected error occurred: {e}"
-        await NotificationService.send_notification(
-            recipient="user@example.com",
-            message=f"Resume upload failed: {error_message}",
-            notification_type="email",
-            subject="Resume Upload Failed",
-        )
-        raise JobApplierException(
-            message=error_message,
-            status_code=500,
-            details={"filename": File.filename, "error": str(e)}
-        )
+        logger.error(f"Failed to upload resume: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error during file upload.")
+
+
+@resumes_router.get("/{user_id}", response_model=List[ResumeResponse], summary="List all resumes for a user")
+async def list_resumes(user_id: int, db: Session = Depends(get_db)):
+    resumes = db.query(FileMetadata).filter(FileMetadata.user_id == user_id, FileMetadata.file_type == 'resume').all()
+    return resumes
+
+
+@resumes_router.get("/{resume_id}/download", summary="Download a specific resume")
+async def get_resume(resume_id: int, db: Session = Depends(get_db)):
+    # In a real app, you'd check if the authenticated user owns this resume
+    resume_meta = db.query(FileMetadata).filter(FileMetadata.id == resume_id).first()
+    if not resume_meta:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    if not os.path.exists(resume_meta.storage_path):
+        raise HTTPException(status_code=404, detail="Resume file not found on server.")
+
+    try:
+        with open(resume_meta.storage_path, "rb") as f:
+            encrypted_data = f.read()
+        decrypted_data = fernet.decrypt(encrypted_data)
+        return StreamingResponse(io.BytesIO(decrypted_data), media_type='application/octet-stream', headers={"Content-Disposition": f"attachment; filename={resume_meta.filename}"})
+    except Exception as e:
+        logger.error(f"Failed to decrypt or read resume file {resume_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Could not process resume file.")
+
+
+@resumes_router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a resume")
+async def delete_resume(resume_id: int, db: Session = Depends(get_db)):
+    # In a real app, you'd check if the authenticated user owns this resume
+    resume_meta = db.query(FileMetadata).filter(FileMetadata.id == resume_id).first()
+    if not resume_meta:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    try:
+        if os.path.exists(resume_meta.storage_path):
+            os.remove(resume_meta.storage_path)
+        db.delete(resume_meta)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error deleting resume {resume_id}: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete resume.")
+
+
+@applications_router.post("/", response_model=JobApplicationResponse, status_code=status.HTTP_201_CREATED, summary="Create a job application")
+async def create_application(app_data: JobApplicationCreate, db: Session = Depends(get_db)):
+    # Check if user and job exist
+    if not db.query(User).filter(User.id == app_data.user_id).first():
+        raise HTTPException(status_code=404, detail=f"User with id {app_data.user_id} not found")
+    if not db.query(JobListing).filter(JobListing.id == app_data.job_id).first():
+        raise HTTPException(status_code=404, detail=f"Job with id {app_data.job_id} not found")
+
+    new_app = JobApplication(**app_data.dict())
+    db.add(new_app)
+    db.commit()
+    db.refresh(new_app)
+    return new_app
+
+
+@applications_router.get("/{user_id}", response_model=List[JobApplicationResponse], summary="List all job applications for a user")
+async def list_applications(user_id: int, db: Session = Depends(get_db)):
+    applications = db.query(JobApplication).filter(JobApplication.user_id == user_id).all()
+    return applications
+
+
+@applications_router.get("/{application_id}", response_model=JobApplicationResponse, summary="Get a specific job application")
+async def get_application(application_id: int, db: Session = Depends(get_db)):
+    # In a real app, you'd check if the authenticated user owns this application
+    application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return application
+
+
+@applications_router.put("/{application_id}", response_model=JobApplicationResponse, summary="Update a job application")
+async def update_application(application_id: int, app_data: JobApplicationUpdate, db: Session = Depends(get_db)):
+    # In a real app, you'd check if the authenticated user owns this application
+    application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    update_data = app_data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(application, key, value)
+
+    db.commit()
+    db.refresh(application)
+    return application
+
+
+@applications_router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a job application")
+async def delete_application(application_id: int, db: Session = Depends(get_db)):
+    # In a real app, you'd check if the authenticated user owns this application
+    application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+
+    db.delete(application)
+    db.commit()
+    return
 
 
 class ATSScoreResponse(BaseModel):
@@ -556,7 +624,7 @@ class HealthCheckResponse(BaseModel):
     message: str = Field(..., example="Job Applier Agent is healthy")
 
 
-@v1_router.get(
+@general_router.get(
     "/status",
     response_model=StatusResponse,
     summary="Get Workflow Status",
@@ -572,7 +640,7 @@ async def get_status() -> StatusResponse:
     return response
 
 
-@v1_router.post(
+@general_router.post(
     "/workflow/pause",
     response_model=WorkflowControlResponse,
     summary="Pause Workflow",
@@ -584,7 +652,7 @@ async def pause_workflow() -> WorkflowControlResponse:
     return WorkflowControlResponse(status="success", message="Workflow paused.")
 
 
-@v1_router.post(
+@general_router.post(
     "/workflow/resume",
     response_model=WorkflowControlResponse,
     summary="Resume Workflow",
@@ -596,7 +664,7 @@ async def resume_workflow() -> WorkflowControlResponse:
     return WorkflowControlResponse(status="success", message="Workflow resumed.")
 
 
-@v1_router.post(
+@general_router.post(
     "/workflow/stop",
     response_model=WorkflowControlResponse,
     summary="Stop Workflow",
@@ -609,7 +677,7 @@ async def stop_workflow() -> WorkflowControlResponse:
     return WorkflowControlResponse(status="success", message="Workflow stopped.")
 
 
-@v1_router.put(
+@general_router.put(
     "/config",
     response_model=ConfigResponse,
     summary="Update Configuration",
@@ -623,7 +691,7 @@ async def update_config(update: ConfigUpdate) -> ConfigResponse:
     return ConfigResponse(status="success", data={"config_key": update.config_key, "config_value": update.config_value, "message": f"Config '{update.config_key}' updated." })
 
 
-@v1_router.get(
+@general_router.get(
     "/config",
     response_model=ConfigResponse,
     summary="Get Configuration",
@@ -639,7 +707,7 @@ async def get_config() -> ConfigResponse:
     return response
 
 
-@v1_router.get(
+@general_router.get(
     "/health",
     response_model=HealthCheckResponse,
     summary="Health Check",
@@ -655,7 +723,7 @@ async def health_check() -> HealthCheckResponse:
     return response
 
 
-@v1_router.post(
+@applications_router.post(
     "/ats-score",
     response_model=ATSScoreResponse,
     summary="Calculate ATS Score",
@@ -682,7 +750,7 @@ async def get_ats_score(
             f"Invalid file type for ATS score: {resume_file.filename} ({resume_file.content_type})"
         )
         error_message = "Invalid file type. Only PDF and DOCX are supported."
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",  # Replace with actual user email/ID
             message=f"ATS score calculation failed: {error_message}",
             notification_type="email",
@@ -720,7 +788,7 @@ async def get_ats_score(
             f"ATS score calculation started in background for {resume_file.filename} with task ID: {task.id}"
         )
 
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",  # Replace with actual user email/ID
             message=f"ATS score calculation for '{resume_file.filename}' started successfully. Task ID: {task.id}",
             notification_type="email",
@@ -742,7 +810,7 @@ async def get_ats_score(
             exc_info=True,
         )
         error_message = "Failed to calculate ATS score due to a database error."
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",
             message=f"ATS score calculation failed: {error_message}",
             notification_type="email",
@@ -773,7 +841,7 @@ async def get_ats_score(
             exc_info=True,
         )
         error_message = "An unexpected error occurred during ATS scoring."
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",
             message=f"ATS score calculation failed: {error_message}",
             notification_type="email",
@@ -792,7 +860,7 @@ async def get_ats_score(
         pass
 
 
-@v1_router.post(
+@applications_router.post(
     "/apply-for-job",
     summary="Apply for Job",
     description="Initiates the job application process using the Application Automation Agent.",
@@ -807,7 +875,7 @@ async def apply_for_job(
     logger.info(f"Received request to apply for job at: {job_posting_url}")
     try:
         application_automation_agent.apply_to_job(job_posting_url)
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",
             message=f"Application process initiated successfully for: {job_posting_url}",
             notification_type="email",
@@ -821,7 +889,7 @@ async def apply_for_job(
             data={"message": f"Application process initiated for: {job_posting_url}"}
         )
     except JobApplierException as e:
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",
             message=f"Job application failed: {e.message}",
             notification_type="email",
@@ -847,7 +915,7 @@ async def apply_for_job(
             exc_info=True,
         )
         error_message = f"An unexpected error occurred: {e}"
-        await notification_service.send_notification(
+        await notification_service.send_notification( # TODO: Get recipient from authenticated user
             recipient="user@example.com",
             message=f"Job application failed: {error_message}",
             notification_type="email",
@@ -868,7 +936,7 @@ class JobSearchRequest(BaseModel):
     location: str = ""
     num_results: int = 10
 
-class JobListing(BaseModel):
+class JobSearchResultItem(BaseModel):
     title: str = None
     company: str = None
     location: str = None
@@ -876,9 +944,9 @@ class JobListing(BaseModel):
     url: str = None
 
 class JobSearchResponse(BaseModel):
-    jobs: list[JobListing]
+    jobs: list[JobSearchResultItem]
 
-@v1_router.post(
+@applications_router.post(
     "/job-search",
     response_model=JobSearchResponse,
     summary="Search jobs from multiple job boards",
@@ -906,7 +974,7 @@ async def job_search(request: JobSearchRequest):
         if url and url not in seen:
             seen.add(url)
             unique_jobs.append(job)
-    response = JSONResponse(content=JobSearchResponse(jobs=[JobListing(**job) for job in unique_jobs]).dict())
+    response = JSONResponse(content=JobSearchResponse(jobs=[JobSearchResultItem(**job) for job in unique_jobs]).dict())
     response.headers["Cache-Control"] = "public, max-age=60"
     return response
 
@@ -920,7 +988,7 @@ class AnalyticsEventResponse(BaseModel):
     status: str
     message: str
 
-@v1_router.post(
+@general_router.post(
     "/analytics/event",
     response_model=AnalyticsEventResponse,
     summary="Track a custom analytics event",
@@ -949,7 +1017,7 @@ class CalendarConnectResponse(BaseModel):
     status: str
     message: str
 
-@v1_router.post(
+@general_router.post(
     "/calendar/connect",
     response_model=CalendarConnectResponse,
     summary="Connect calendar (Google/Outlook) - stub",
@@ -970,7 +1038,7 @@ class DocumentProcessResponse(BaseModel):
     metadata: dict = {}
     message: str = None
 
-@v1_router.post(
+@general_router.post(
     "/document/process",
     response_model=DocumentProcessResponse,
     summary="Process a document (resume, PDF, image)",
@@ -1002,7 +1070,7 @@ class LocationAutocompleteRequest(BaseModel):
 class LocationAutocompleteResponse(BaseModel):
     suggestions: list[str]
 
-@v1_router.post(
+@general_router.post(
     "/location/autocomplete",
     response_model=LocationAutocompleteResponse,
     summary="Address autocomplete (stub)",
@@ -1010,51 +1078,39 @@ class LocationAutocompleteResponse(BaseModel):
     dependencies=[Depends(RateLimiter(times=10, seconds=10))]
 )
 async def location_autocomplete(request: LocationAutocompleteRequest):
-    # Placeholder suggestions
-    suggestions = [
-        f"{request.query} Street, City, Country",
-        f"{request.query} Avenue, City, Country",
-        f"{request.query} Road, City, Country"
-    ]
+    # This is a stub. Integrate with a real mapping service like Google Places or Mapbox.
+    suggestions = []
     return LocationAutocompleteResponse(suggestions=suggestions)
 
-@v1_router.get("/jobs", response_model=List[JobListing], summary="List all jobs")
-async def list_jobs():
-    session = SessionLocal()
-    jobs = job_db.get_all_job_listings(session)
+@general_router.get("/jobs", response_model=List[JobListingResponse], summary="List all jobs", tags=["Jobs"])
+async def list_jobs(db: Session = Depends(get_db)):
+    jobs = job_db.get_all_job_listings(db)
     return jobs
 
-@v1_router.post("/jobs", response_model=JobListing, summary="Create a new job")
-async def create_job(job: JobCreateRequest):
-    session = SessionLocal()
-    job_obj = job_db.add_job_listing(session, job.dict())
+@general_router.post("/jobs", response_model=JobListingResponse, summary="Create a new job", tags=["Jobs"])
+async def create_job(job: JobCreateRequest, db: Session = Depends(get_db)):
+    job_obj = job_db.add_job_listing(db, job.dict())
     return job_obj
 
-@v1_router.get("/jobs/{job_id}", response_model=JobListing, summary="Get a job by ID")
-async def get_job(job_id: str):
-    session = SessionLocal()
-    job = job_db.get_job_listing(session, job_id)
+@general_router.get("/jobs/{job_id}", response_model=JobListingResponse, summary="Get a job by ID", tags=["Jobs"])
+async def get_job(job_id: str, db: Session = Depends(get_db)):
+    job = job_db.get_job_listing(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@v1_router.put("/jobs/{job_id}", response_model=JobListing, summary="Update a job by ID")
-async def update_job(job_id: str, job_update: JobUpdateRequest):
-    session = SessionLocal()
-    updated = job_db.update_job_listing(session, job_id, {k: v for k, v in job_update.dict().items() if v is not None})
+@general_router.put("/jobs/{job_id}", response_model=JobListingResponse, summary="Update a job by ID", tags=["Jobs"])
+async def update_job(job_id: str, job_update: JobUpdateRequest, db: Session = Depends(get_db)):
+    updated = job_db.update_job_listing(db, job_id, job_update.dict(exclude_unset=True))
     if not updated:
         raise HTTPException(status_code=404, detail="Job not found or not updated")
     # Fetch the updated job
-    job = job_db.get_job_listing(session, job_id)
+    job = job_db.get_job_listing(db, job_id)
     return job
 
-@v1_router.delete("/jobs/{job_id}", summary="Delete a job by ID")
-async def delete_job(job_id: str):
-    session = SessionLocal()
-    deleted = job_db.delete_job_listing(session, job_id)
+@general_router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete a job by ID", tags=["Jobs"])
+async def delete_job(job_id: str, db: Session = Depends(get_db)):
+    deleted = job_db.delete_job_listing(db, job_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Job not found or not deleted")
-    return {"status": "success", "message": f"Job {job_id} deleted."}
-
-# Export the router for use in main.py
-router = v1_router
+    return None

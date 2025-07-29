@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import {
@@ -27,6 +29,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useApiServices } from '@/lib/api-context';
 import { UploadResult } from '@/lib/resume';
+import { getWorkflowStatus, updateWorkflowStatus, WorkflowStatus } from '@/lib/workflow';
 import Image from 'next/image';
 
 // File Upload Component for Resume Editor
@@ -148,28 +151,6 @@ const resumeSections = [
   { id: "awards", title: "Awards", required: false },
 ]
 
-const aiSuggestions = [
-  {
-    type: "improvement",
-    section: "Professional Summary",
-    suggestion: "Add quantifiable achievements to make your summary more impactful",
-    example:
-      "Instead of 'Experienced developer', try 'Senior developer with 5+ years building scalable applications for 10M+ users'",
-  },
-  {
-    type: "keyword",
-    section: "Skills",
-    suggestion: "Add 'React Hooks' and 'TypeScript' to match job requirements",
-    impact: "high",
-  },
-  {
-    type: "format",
-    section: "Work Experience",
-    suggestion: "Use bullet points starting with action verbs for better ATS parsing",
-    impact: "medium",
-  },
-]
-
 // ErrorBoundary component
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<Error | null>(null)
@@ -200,11 +181,13 @@ export function ResumeEditor() {
   const [atsScore, setAtsScore] = useState(0)
   const [showAISuggestions, setShowAISuggestions] = useState(true)
   const [isOptimizing, setIsOptimizing] = useState(false)
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatus | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   // Real user data state
@@ -262,6 +245,25 @@ export function ResumeEditor() {
     };
     loadUserProfile();
   }, [getUserProfile]);
+
+  // Load workflow status
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const status = await getWorkflowStatus();
+      setWorkflowStatus(status);
+    };
+    fetchStatus();
+  }, []);
+
+  // Fetch AI suggestions
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      // TODO: Replace with an actual API call to fetch dynamic AI suggestions
+      // For now, we'll set it to an empty array.
+      setAiSuggestions([]);
+    };
+    fetchSuggestions();
+  }, [isOptimizing]); // Refetch when optimization runs
 
   const handleOptimize = useCallback(async () => {
     setIsOptimizing(true);
@@ -360,6 +362,17 @@ export function ResumeEditor() {
       setIsUploading(false);
     }
   }, [resumeFile, uploadResume]);
+
+  const handleWorkflowToggle = useCallback(async (isRunning: boolean) => {
+    setWorkflowStatus(prev => prev ? { ...prev, is_running: isRunning } : null); // Optimistic update
+    try {
+      const newStatus = await updateWorkflowStatus(isRunning);
+      setWorkflowStatus(newStatus);
+    } catch (err) {
+      setError("Failed to update workflow status. Please try again.");
+      setWorkflowStatus(prev => prev ? { ...prev, is_running: !isRunning } : null); // Revert on error
+    }
+  }, []);
 
   const handleProfileChange = useCallback((field: string, value: string) => {
     setUserProfile(prev => ({ ...prev, [field]: value }));
@@ -776,7 +789,7 @@ export function ResumeEditor() {
               </div>
               <Button
                 onClick={handleOptimize}
-                disabled={isOptimizing}
+                disabled={isOptimizing || !workflowStatus?.is_running}
                 className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700"
               >
                 {isOptimizing ? (
@@ -791,6 +804,11 @@ export function ResumeEditor() {
                   </>
                 )}
               </Button>
+              {!workflowStatus?.is_running && (
+                <p className="text-xs text-center text-red-500 mt-2">
+                  Workflow is paused.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -860,6 +878,33 @@ export function ResumeEditor() {
                 <span className="text-sm text-muted-foreground">Last Updated</span>
                 <span className="text-sm font-medium">Just now</span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Workflow Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Agent Workflow</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {workflowStatus ? (
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="workflow-toggle" className={`font-medium ${workflowStatus.is_running ? 'text-green-600' : 'text-red-600'}`}>
+                    {workflowStatus.is_running ? 'Running' : 'Paused'}
+                  </Label>
+                  <Switch
+                    id="workflow-toggle"
+                    checked={workflowStatus.is_running}
+                    onCheckedChange={handleWorkflowToggle}
+                    aria-label={`Toggle agent workflow ${workflowStatus.is_running ? 'off' : 'on'}`}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center">
+                  <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  <span>Loading status...</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 

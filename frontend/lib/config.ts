@@ -1,10 +1,12 @@
 // API Configuration for deployed services
 export const API_CONFIG = {
   // Backend service URLs - Using local development URLs
-  JOB_APPLIER_AGENT: process.env.NEXT_PUBLIC_JOB_APPLIER_AGENT_URL || 'http://localhost:8001',
-  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'http://localhost:8001', // Fallback to Job Applier Agent
-  USER_SERVICE: process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:8001',
-  AGENT_ORCHESTRATION_SERVICE: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'http://localhost:8001',
+  JOB_SCRAPER_SERVICE: process.env.NEXT_PUBLIC_JOB_SCRAPER_SERVICE_URL || 'http://localhost:8000',
+  JOB_MATCHER_SERVICE: process.env.NEXT_PUBLIC_JOB_MATCHER_SERVICE_URL || 'http://localhost:8001',
+  ATS_SERVICE: process.env.NEXT_PUBLIC_ATS_SERVICE_URL || 'http://localhost:8002',
+  RESUME_SERVICE: process.env.NEXT_PUBLIC_RESUME_SERVICE_URL || 'http://localhost:8003',
+  USER_SERVICE: process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:8004',
+  AGENT_ORCHESTRATION_SERVICE: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'http://localhost:8005',
 
   // API endpoints
   ENDPOINTS: {
@@ -45,4 +47,4 @@ export function getServiceUrl(service: keyof typeof API_CONFIG, endpoint: string
 }
 
 // Default API base URL (for backward compatibility)
-export const DEFAULT_API_BASE_URL = API_CONFIG.JOB_APPLIER_AGENT;
+export const DEFAULT_API_BASE_URL = API_CONFIG.AGENT_ORCHESTRATION_SERVICE;

@@ -5,7 +5,7 @@ This module (`config.py`) is responsible for setting up the database connection 
 
 ## Dependencies
 - `sqlalchemy.orm.sessionmaker`: For creating session factories.
-- `sqlalchemy.ext.declarative.declarative_base`: For defining declarative models.
+- `sqlalchemy.orm.DeclarativeBase`: For defining declarative models.
 - `sqlalchemy.create_engine`: For creating the database engine.
 - `packages.config.settings.settings`: To import application settings, specifically the `DATABASE_URL`.
 
@@ -24,7 +24,7 @@ This module (`config.py`) is responsible for setting up the database connection 
   - `bind=engine`: Binds the session to the created database engine.
 
 ### `Base`
-- **Purpose**: An instance of `declarative_base()`. This is the base class that all SQLAlchemy ORM models (tables) in the application will inherit from. It provides the declarative mapping functionality, allowing Python classes to be mapped to database tables.
+- **Purpose**: A class that inherits from `DeclarativeBase`. This is the base class that all SQLAlchemy ORM models (tables) in the application will inherit from. It provides the declarative mapping functionality, allowing Python classes to be mapped to database tables.
 
 ## Workflow
 1. The module imports necessary components from SQLAlchemy and the application's settings.

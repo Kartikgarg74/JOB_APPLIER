@@ -28,9 +28,13 @@ import {
   FileText,
 } from "lucide-react"
 import { useApiServices } from '@/lib/api-context';
-import { Application, fetchApplications, applyForJob, createApplicationManually } from '@/lib/applications';
+import { Application, fetchApplications, createApplication, CreateApplicationData, submitJobApplication } from '@/lib/applications';
 import { uploadResume } from '@/lib/resume';
 import Image from 'next/image';
+import { FileUpload } from './file-upload';
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 
 // ErrorBoundary component
 function ErrorBoundary({ children }: { children: React.ReactNode }) {
@@ -58,11 +62,7 @@ class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void;
 }
 
 // Add Application Modal Component
-function AddApplicationModal({ isOpen, onClose, onAdd }: {
-  isOpen: boolean;
-  onClose: () => void;
-  onAdd: (application: Omit<Application, 'id'>) => void;
-}) {
+function AddApplicationModal({ isOpen, onClose, userId }: { isOpen: boolean; onClose: () => void; userId: string; }) {
   const [formData, setFormData] = useState({
     company: '',
     position: '',
@@ -77,11 +77,11 @@ function AddApplicationModal({ isOpen, onClose, onAdd }: {
     e.preventDefault();
     setLoading(true);
     try {
-      await onAdd({
-        ...formData,
-        appliedDate: new Date().toISOString(),
-        atsScore: 0,
-        logo: undefined
+      await createApplication({
+        userId: parseInt(userId),
+        jobId: `${formData.company}-${formData.position}`,
+        status: formData.status,
+        notes: formData.notes,
       });
       setFormData({
         company: '',
@@ -94,8 +94,6 @@ function AddApplicationModal({ isOpen, onClose, onAdd }: {
       onClose();
     } catch (error) {
       console.error('Error adding application:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -184,80 +182,227 @@ function AddApplicationModal({ isOpen, onClose, onAdd }: {
   );
 }
 
-// File Upload Component
-function FileUpload({ onUpload }: { onUpload: (file: File) => void }) {
-  const [dragActive, setDragActive] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+// Cover Letter Modal Component
+interface CoverLetterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userId: string;
+}
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
+function CoverLetterModal({ isOpen, onClose, userId }: CoverLetterModalProps) {
+  const [resumeContent, setResumeContent] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [generatedCoverLetter, setGeneratedCoverLetter] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      onUpload(e.dataTransfer.files[0]);
-    }
-  };
+  const { AGENT_ORCHESTRATION_SERVICE } = useApiServices();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      onUpload(e.target.files[0]);
+  const handleGenerateCoverLetter = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await AGENT_ORCHESTRATION_SERVICE.post('/coverletter/generate', {
+        resume_content: resumeContent,
+        job_description: jobDescription,
+        user_preferences: {},
+      });
+      setGeneratedCoverLetter(response.data.cover_letter);
+    } catch (err) {
+      console.error('Error generating cover letter:', err);
+      setError('Failed to generate cover letter. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div
-      className={`border-2 border-dashed rounded-lg p-6 text-center ${
-        dragActive ? "border-purple-500 bg-purple-50" : "border-gray-300"
-      }`}
-      onDragEnter={handleDrag}
-      onDragLeave={handleDrag}
-      onDragOver={handleDrag}
-      onDrop={handleDrop}
-    >
-      <Upload className="mx-auto h-12 w-12 text-gray-400" />
-      <div className="mt-4">
-        <p className="text-sm text-gray-600">
-          Drag and drop your resume here, or{" "}
-          <button
-            type="button"
-            className="text-purple-600 hover:text-purple-500"
-            onClick={() => inputRef.current?.click()}
-          >
-            browse
-          </button>
-        </p>
-        <p className="text-xs text-gray-500 mt-1">PDF, DOC, DOCX up to 10MB</p>
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        className="hidden"
-        accept=".pdf,.doc,.docx"
-        onChange={handleChange}
-        aria-label="Upload resume file"
-        title="Upload resume file"
-      />
-    </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Generate Cover Letter</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="resumeContent">Your Resume Content</Label>
+            <Textarea
+              id="resumeContent"
+              value={resumeContent}
+              onChange={(e) => setResumeContent(e.target.value)}
+              placeholder="Paste your resume content here..."
+              rows={10}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="jobDescription">Job Description</Label>
+            <Textarea
+              id="jobDescription"
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste the job description here..."
+              rows={10}
+            />
+          </div>
+          <Button onClick={handleGenerateCoverLetter} disabled={loading || !resumeContent || !jobDescription}>
+            {loading ? 'Generating...' : 'Generate Cover Letter'}
+          </Button>
+          {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+          {generatedCoverLetter && (
+            <div className="space-y-2">
+              <Label htmlFor="generatedCoverLetter">Generated Cover Letter</Label>
+              <Textarea
+                id="generatedCoverLetter"
+                value={generatedCoverLetter}
+                readOnly
+                rows={15}
+                className="bg-gray-100 dark:bg-gray-800"
+              />
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-export function ApplicationsTracker() {
+interface SubmitApplicationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userId: string;
+}
+
+function SubmitApplicationModal({ isOpen, onClose, userId }: SubmitApplicationModalProps) {
+  const [formData, setFormData] = useState({
+    jobId: '',
+    resumeId: '',
+    coverLetterContent: '',
+    applicationUrl: '',
+    additionalData: '{}',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const parsedAdditionalData = JSON.parse(formData.additionalData || '{}');
+      await submitJobApplication({
+        job_id: formData.jobId,
+        user_id: userId,
+        resume_id: formData.resumeId,
+        cover_letter_content: formData.coverLetterContent,
+        application_url: formData.applicationUrl,
+        additional_data: parsedAdditionalData,
+      });
+      setFormData({
+        jobId: '',
+        resumeId: '',
+        coverLetterContent: '',
+        applicationUrl: '',
+        additionalData: '{}',
+      });
+      onClose();
+    } catch (err) {
+      console.error('Error submitting application:', err);
+      setError('Failed to submit application. Please check your inputs and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Submit Job Application</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="jobId">Job ID</Label>
+            <Input
+              id="jobId"
+              value={formData.jobId}
+              onChange={(e) => setFormData({ ...formData, jobId: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="resumeId">Resume ID</Label>
+            <Input
+              id="resumeId"
+              value={formData.resumeId}
+              onChange={(e) => setFormData({ ...formData, resumeId: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="coverLetterContent">Cover Letter Content (Optional)</Label>
+            <Textarea
+              id="coverLetterContent"
+              value={formData.coverLetterContent}
+              onChange={(e) => setFormData({ ...formData, coverLetterContent: e.target.value })}
+              rows={5}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="applicationUrl">Application URL</Label>
+            <Input
+              id="applicationUrl"
+              value={formData.applicationUrl}
+              onChange={(e) => setFormData({ ...formData, applicationUrl: e.target.value })}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="additionalData">Additional Data (JSON, Optional)</Label>
+            <Textarea
+              id="additionalData"
+              value={formData.additionalData}
+              onChange={(e) => setFormData({ ...formData, additionalData: e.target.value })}
+              rows={3}
+              placeholder="e.g., {\"source\": \"LinkedIn\"}"
+            />
+          </div>
+          {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Submitting...' : 'Submit Application'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+
+
+
+interface ApplicationsTrackerProps {
+  userId: string;
+  jobId?: string;
+}
+
+
+
+
+export function ApplicationsTracker({ userId, jobId }: ApplicationsTrackerProps) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobUrl, setJobUrl] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showCoverLetterModal, setShowCoverLetterModal] = useState(false);
+  const [showSubmitApplicationModal, setShowSubmitApplicationModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
 
   const { fetchApplications, applyForJob, uploadResume: uploadResumeService } = useApiServices();
@@ -265,11 +410,11 @@ export function ApplicationsTracker() {
   // Fetch applications from backend
   useEffect(() => {
     setLoading(true);
-    fetchApplications()
+    fetchApplications(parseInt(userId))
       .then(setApplications)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [fetchApplications]);
+  }, [fetchApplications, userId]);
 
   const handleApply = useCallback(async () => {
     if (!jobUrl) {
@@ -279,9 +424,9 @@ export function ApplicationsTracker() {
     setLoading(true);
     setError(null);
     try {
-      await applyForJob(jobUrl);
+      await applyForJob({ userId, jobId: jobId || '' });
       // Refresh applications list
-      const updatedApplications = await fetchApplications();
+      const updatedApplications = await fetchApplications(parseInt(userId));
       setApplications(updatedApplications);
       setJobUrl("");
     } catch (e) {
@@ -293,11 +438,15 @@ export function ApplicationsTracker() {
     } finally {
       setLoading(false);
     }
-  }, [jobUrl, applyForJob, fetchApplications]);
+  }, [jobUrl, applyForJob, fetchApplications, userId, jobId]);
 
-  const handleAddApplication = useCallback(async (application: Omit<Application, 'id'>) => {
+  const handleAddApplication = useCallback(async (application: CreateApplicationData) => {
     try {
-      const newApp = await createApplicationManually(application);
+      const newApp = await createApplication({
+        ...application,
+        userId: parseInt(userId),
+        jobId: jobId || ''
+      });
       setApplications(prev => [newApp, ...prev]);
     } catch (e) {
       if (e instanceof Error) {
@@ -306,7 +455,7 @@ export function ApplicationsTracker() {
         setError("Failed to add application");
       }
     }
-  }, []);
+  }, [userId, jobId]);
 
   const handleFileUpload = useCallback(async (file: File) => {
     setUploadingFile(true);
@@ -389,12 +538,17 @@ export function ApplicationsTracker() {
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Applications Tracker</h1>
             <p className="text-muted-foreground text-base sm:text-lg">Track and manage all your job applications in one place</p>
           </div>
-          <Button
-            className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 w-full sm:w-auto"
-            onClick={() => setShowAddModal(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Application
+          <Button onClick={() => setShowAddModal(true)} className="flex items-center space-x-2">
+            <Plus className="h-4 w-4" />
+            <span>Add Application</span>
+          </Button>
+          <Button onClick={() => setShowCoverLetterModal(true)} className="flex items-center space-x-2">
+            <FileText className="h-4 w-4" />
+            <span>Generate Cover Letter</span>
+          </Button>
+          <Button onClick={() => setShowSubmitApplicationModal(true)} className="flex items-center space-x-2">
+            <Upload className="h-4 w-4" />
+            <span>Submit Application</span>
           </Button>
         </div>
 
@@ -608,10 +762,12 @@ export function ApplicationsTracker() {
 
         {/* Add Application Modal */}
         <AddApplicationModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onAdd={handleAddApplication}
-        />
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        userId={userId}
+      />
+      <CoverLetterModal isOpen={showCoverLetterModal} onClose={() => setShowCoverLetterModal(false)} userId={userId} />
+      <SubmitApplicationModal isOpen={showSubmitApplicationModal} onClose={() => setShowSubmitApplicationModal(false)} userId={userId} />
       </main>
     </ErrorBoundary>
   )

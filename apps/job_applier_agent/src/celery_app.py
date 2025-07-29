@@ -1,4 +1,7 @@
 from celery import Celery
+from dotenv import load_dotenv
+load_dotenv()
+
 from packages.config.settings import settings
 
 celery_app = Celery(

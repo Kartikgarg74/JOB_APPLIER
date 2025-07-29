@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, ReactNode } from 'react';
-import { fetchApplications, applyForJob, matchJobs, createApplicationManually, updateApplicationStatus, deleteApplicationById } from './applications';
+import { fetchApplications, createApplication, matchJobs, updateApplication, deleteApplication, applyForJob } from './applications';
 import { uploadResume } from './resume';
 import { searchJobs, fetchAtsScore } from './ats';
 import { getUserProfile, updateUserProfile, getEducation, createEducation, getExperience, createExperience, getSkills, createSkill } from './user';
@@ -9,11 +9,11 @@ import { getUserProfile, updateUserProfile, getEducation, createEducation, getEx
 export interface ApiServices {
   // Application management
   fetchApplications: typeof fetchApplications;
-  applyForJob: typeof applyForJob;
+  createApplication: typeof createApplication;
   matchJobs: typeof matchJobs;
-  createApplicationManually: typeof createApplicationManually;
-  updateApplicationStatus: typeof updateApplicationStatus;
-  deleteApplicationById: typeof deleteApplicationById;
+  updateApplication: typeof updateApplication;
+  deleteApplication: typeof deleteApplication;
+  applyForJob: typeof applyForJob;
 
   // File upload
   uploadResume: typeof uploadResume;
@@ -41,11 +41,11 @@ export function ApiProvider({ children }: { children: ReactNode }) {
   const services: ApiServices = {
     // Application management
     fetchApplications,
-    applyForJob,
+    createApplication,
     matchJobs,
-    createApplicationManually,
-    updateApplicationStatus,
-    deleteApplicationById,
+    updateApplication,
+    deleteApplication,
+    applyForJob,
 
     // File upload
     uploadResume,

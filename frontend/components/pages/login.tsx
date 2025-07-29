@@ -11,31 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Zap, Mail, Lock, Eye, EyeOff, Github, Chrome, AlertCircle } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Moon, Sun } from "lucide-react"
-
-// ErrorBoundary component
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [error, setError] = useState<Error | null>(null)
-  return error ? (
-    <Alert variant="destructive" className="mb-4" role="alert" aria-live="assertive">
-      <AlertDescription>
-        <div className="flex justify-between items-center">
-          <span>{error.message || "An unexpected error occurred. Please try again."}</span>
-          <button onClick={() => setError(null)} className="ml-4 text-lg font-bold focus:outline-none" aria-label="Dismiss error">&times;</button>
-        </div>
-      </AlertDescription>
-    </Alert>
-  ) : (
-    <ErrorBoundaryInner setError={setError}>{children}</ErrorBoundaryInner>
-  )
-}
-class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void; children: React.ReactNode }> {
-  componentDidCatch(error: Error) {
-    this.props.setError(error)
-  }
-  render() {
-    return this.props.children
-  }
-}
+import { createBrowserClient } from '@supabase/ssr'
 
 export function LoginPage() {
   const { theme, setTheme } = useTheme()
@@ -46,24 +22,48 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
-    console.log("Analytics: Login attempt", { email })
-    // Simulate login
-    setTimeout(() => {
-      if (email === "demo@example.com" && password === "password") {
-        window.location.href = "/"
-      } else {
-        setError("Invalid email or password")
-      }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+    } else {
+      // Handle successful login, e.g., redirect to dashboard
+      window.location.href = "/"
+    }
+    setIsLoading(false)
+  }
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true)
+    setError("")
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      setError(error.message)
       setIsLoading(false)
-    }, 1000)
+    }
+    // Google login will redirect, so no need to set isLoading(false) here on success
   }
 
   return (
-    <ErrorBoundary>
       <main role="main" aria-label="Login" tabIndex={-1} className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950 dark:via-blue-950 dark:to-cyan-950 flex items-center justify-center p-4 focus:outline-none">
         {/* Background Pattern */}
         <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
@@ -106,7 +106,7 @@ export function LoginPage() {
                 </Alert>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleEmailLogin} className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="email" className="text-sm font-medium">
                     Email
@@ -194,7 +194,7 @@ export function LoginPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="w-full bg-transparent">
+                <Button variant="outline" className="w-full bg-transparent" onClick={handleGoogleLogin}>
                   <Chrome className="w-4 h-4 mr-2" />
                   Google
                 </Button>
@@ -206,28 +206,24 @@ export function LoginPage() {
 
               <div className="text-center text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
-                  Sign up
+                <Link href="/signup" className="text-primary hover:underline">
+                  Sign Up
                 </Link>
               </div>
 
-              <div className="text-center">
-                <Link href="/welcome" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  ← Back to home
+              <div className="text-center text-sm text-muted-foreground">
+                By signing in, you agree to our{" "}
+                <Link href="/terms" className="text-primary hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-primary hover:underline">
+                  Privacy Policy
                 </Link>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Demo Credentials */}
-          <Card className="mt-4 border-dashed bg-muted/50">
-            <CardContent className="p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-2">Demo Credentials:</p>
-              <p className="text-xs font-mono">demo@example.com / password</p>
             </CardContent>
           </Card>
         </div>
       </main>
-    </ErrorBoundary>
   )
 }

@@ -1,3 +1,4 @@
+import { fetchWithRetry } from './fetchWithRetry';
 import { API_CONFIG, getServiceUrl } from './config';
 
 // Types for ATS API
@@ -34,7 +35,7 @@ export async function fetchAtsScore(
 
   const url = getServiceUrl('ATS_SERVICE', API_CONFIG.ENDPOINTS.ATS_SCORE_FILE);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
     body: formData,
   });
@@ -54,23 +55,25 @@ export async function fetchAtsScore(
 export async function searchJobs(
   query: string,
   location: string = "",
-  numResults: number = 10,
-  sources: string[] = ["indeed", "linkedin", "glassdoor", "company"]
+  jobType: string = "",
+  salaryRange: string = "",
 ): Promise<any> {
-  const formData = new FormData();
-  formData.append("query", query);
-  formData.append("location", location);
-  formData.append("num_results", numResults.toString());
-  sources.forEach(source => formData.append("sources", source));
-
   const url = getServiceUrl('ATS_SERVICE', API_CONFIG.ENDPOINTS.SEARCH_JOBS);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
-    body: formData,
-  });
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+       query,
+       location,
+       job_type: jobType,
+       salary_range: salaryRange,
+     }),
+   });
 
-  if (!result.ok) {
+   if (!result.ok) {
     let errMsg = "Failed to search jobs";
     try {
       const err = await result.json();

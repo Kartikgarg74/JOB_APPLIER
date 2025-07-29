@@ -1,4 +1,5 @@
-import { API_CONFIG, getServiceUrl } from './config';
+import { fetchWithRetry } from './fetchWithRetry';
+import { API_CONFIG, getServiceUrl } from './utils';
 
 // Types for User Profile
 export interface UserProfile {
@@ -67,7 +68,7 @@ export interface JobPreference {
 export async function getUserProfile(): Promise<UserProfile> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_PROFILE);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     headers: {
       "Authorization": `Bearer ${localStorage.getItem('token')}`,
     },
@@ -87,7 +88,7 @@ export async function getUserProfile(): Promise<UserProfile> {
 export async function updateUserProfile(profile: UserProfile): Promise<UserProfile> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_PROFILE);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -111,7 +112,7 @@ export async function updateUserProfile(profile: UserProfile): Promise<UserProfi
 export async function getEducation(): Promise<Education[]> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_EDUCATION);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     headers: {
       "Authorization": `Bearer ${localStorage.getItem('token')}`,
     },
@@ -131,7 +132,7 @@ export async function getEducation(): Promise<Education[]> {
 export async function createEducation(education: Education): Promise<Education> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_EDUCATION);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -155,7 +156,7 @@ export async function createEducation(education: Education): Promise<Education> 
 export async function getExperience(): Promise<Experience[]> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_EXPERIENCE);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     headers: {
       "Authorization": `Bearer ${localStorage.getItem('token')}`,
     },
@@ -175,7 +176,7 @@ export async function getExperience(): Promise<Experience[]> {
 export async function createExperience(experience: Experience): Promise<Experience> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_EXPERIENCE);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -199,7 +200,7 @@ export async function createExperience(experience: Experience): Promise<Experien
 export async function getSkills(): Promise<Skill[]> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_SKILLS);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     headers: {
       "Authorization": `Bearer ${localStorage.getItem('token')}`,
     },
@@ -219,7 +220,7 @@ export async function getSkills(): Promise<Skill[]> {
 export async function createSkill(skill: Skill): Promise<Skill> {
   const url = getServiceUrl('USER_SERVICE', API_CONFIG.ENDPOINTS.USER_SKILLS);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,39 +1,11 @@
 # packages/database/job_data_model.py
 
 import logging
-from sqlalchemy import Column, String, Text, DateTime, Boolean
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from datetime import datetime
 import uuid
-from packages.database.config import Base
-
-
-class JobListing(Base):
-    __tablename__ = "job_listings"
-
-    id = Column(
-        String, primary_key=True
-    )  # Unique ID for the job listing, e.g., from job board
-    title = Column(String, nullable=False)
-    company = Column(String, nullable=False)
-    location = Column(String, nullable=False)
-    description = Column(Text, nullable=False)
-    requirements = Column(Text)
-    salary = Column(String)
-    posting_date = Column(DateTime)
-    url = Column(String, nullable=False, unique=True)
-    source = Column(String)  # e.g., Indeed, LinkedIn, Google Jobs
-    date_discovered = Column(DateTime, default=datetime.utcnow)
-    is_applied = Column(Boolean, default=False)
-    application_status = Column(String, default="Pending", index=True)
-    __table_args__ = (
-        # Add index for application_status
-        # (other indexes can be added here as needed)
-    )
-
-    def __repr__(self):
-        return f"<JobListing(id='{self.id}', title='{self.title}', company='{self.company}')>"
+from .models import JobListing
 
 
 class JobDatabase:
@@ -77,22 +49,14 @@ class JobDatabase:
             session.rollback()
             self.logger.error(f"Database error adding job listing: {e}")
             raise RuntimeError(f"Database error adding job listing: {e}") from e
-        finally:
-            session.close()
 
 
     def get_job_listing(self, session: Session, job_id: str):
-        try:
-            return session.query(JobListing).filter_by(id=job_id).first()
-        finally:
-            session.close()
+        return session.query(JobListing).filter_by(id=job_id).first()
 
 
     def get_all_job_listings(self, session: Session):
-        try:
-            return session.query(JobListing).all()
-        finally:
-            session.close()
+        return session.query(JobListing).all()
 
 
     def update_job_listing(self, session: Session, job_id: str, updated_data: dict):
@@ -105,12 +69,11 @@ class JobDatabase:
                 self.logger.info(f"Updated job {job.title}")
                 return True
             return False
+
         except SQLAlchemyError as e:
             session.rollback()
             self.logger.error(f"Database error updating job status: {e}")
             raise RuntimeError(f"Database error updating job status: {e}") from e
-        finally:
-            session.close()
 
 
     def search_job_listings(
@@ -139,8 +102,9 @@ class JobDatabase:
             if posting_date_after:
                 jobs = jobs.filter(JobListing.posting_date >= posting_date_after)
             return jobs.all()
-        finally:
-            session.close()
+        except SQLAlchemyError as e:
+            self.logger.error(f"Database error searching job listings: {e}")
+            raise RuntimeError(f"Database error searching job listings: {e}") from e
 
 
     def delete_job_listing(self, session: Session, job_id: str):
@@ -156,5 +120,3 @@ class JobDatabase:
             session.rollback()
             self.logger.error(f"Database error deleting job listing: {e}")
             raise RuntimeError(f"Database error deleting job listing: {e}") from e
-        finally:
-             session.close()

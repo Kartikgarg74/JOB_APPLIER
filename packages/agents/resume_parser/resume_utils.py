@@ -39,10 +39,6 @@ def extract_text_from_pdf(file_path: str) -> str:
                     text += page_text + "\n"
             return text.strip()
     except Exception as e:
-        # For test files, don't treat them as errors
-        if "Dummy PDF content" in str(e) or "EOF marker not found" in str(e):
-            logger.info("Test file detected, returning mock content")
-            return "John Doe\nSoftware Engineer\njohn.doe@example.com"
         logger.error(f"Error extracting text from PDF: {e}")
         return ""
 
@@ -56,10 +52,6 @@ def extract_text_from_docx(file_path: str) -> str:
         text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
         return text.strip()
     except Exception as e:
-        # For test files, don't treat them as errors
-        if "Package not found" in str(e) or "Dummy DOCX content" in str(e):
-            logger.info("Test file detected, returning mock content")
-            return "John Doe\nSoftware Engineer\njohn.doe@example.com"
         logger.error(f"Error extracting text from DOCX: {e}")
         return ""
 

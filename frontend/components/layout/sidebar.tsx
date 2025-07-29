@@ -24,8 +24,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Job Discovery", href: "/jobs", icon: Search },
+  { name: "Job Dashboard", href: "/jobs/dashboard", icon: LayoutDashboard },
   { name: "ATS Checker", href: "/ats-checker", icon: FileCheck },
   { name: "Resume Editor", href: "/resume-editor", icon: Edit3 },
+  { name: "Resume Upload", href: "/resume-upload", icon: FileCheck },
   { name: "Applications", href: "/applications", icon: Clock },
   { name: "Profile", href: "/profile", icon: User },
   { name: "Settings", href: "/settings", icon: Settings },

@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+spacy
+python-multipart
+python-docx>=0.8.11
+pdfminer.six>=20221105
+prometheus-client

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, JSON, CheckConstraint
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 from .config import Base
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -116,6 +116,12 @@ class User(Base):
         cascade="all, delete-orphan",
     )
     skills = relationship("Skill", back_populates="user", cascade="all, delete-orphan")
+    job_applications = relationship(
+        "JobApplication", back_populates="user", cascade="all, delete-orphan"
+    )
+    files = relationship(
+        "FileMetadata", back_populates="user", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         CheckConstraint("char_length(username) >= 3", name="ck_user_username_minlen"),
@@ -244,13 +250,13 @@ class AuditLog(Base):
     table_name = Column(String, index=True)
     row_id = Column(Integer)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
-    details = Column(JSON)
+
 
 
 class FileMetadata(Base):
     __tablename__ = "file_metadata"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     filename = Column(String(255), index=True, nullable=False)
     storage_path = Column(String(255), nullable=False)
     file_type = Column(String(50), nullable=False)
@@ -260,6 +266,52 @@ class FileMetadata(Base):
     is_encrypted = Column(Boolean, default=False)
     is_compressed = Column(Boolean, default=False)
     file_metadata = Column(JSON, nullable=True)
+
+    user = relationship("User", back_populates="files")
+    job_applications = relationship("JobApplication", back_populates="resume")
+
+
+class JobListing(Base):
+    __tablename__ = "job_listings"
+
+    id = Column(
+        String, primary_key=True
+    )  # Unique ID for the job listing, e.g., from job board
+    title = Column(String, nullable=False)
+    company = Column(String, nullable=False)
+    location = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    requirements = Column(Text)
+    salary = Column(String)
+    posting_date = Column(DateTime)
+    url = Column(String, nullable=False, unique=True)
+    source = Column(String)  # e.g., Indeed, LinkedIn, Google Jobs
+    date_discovered = Column(DateTime, default=datetime.utcnow)
+
+    applications = relationship("JobApplication", back_populates="job")
+
+    def __repr__(self):
+        return f"<JobListing(id='{self.id}', title='{self.title}', company='{self.company}')>"
+
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    job_id = Column(String, ForeignKey("job_listings.id"), nullable=False, index=True)
+    status = Column(String(50), default="applied")
+    applied_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    resume_id = Column(Integer, ForeignKey("file_metadata.id"), nullable=True)
+    cover_letter = Column(Text, nullable=True)
+    extra_data = Column(JSON, nullable=True)
+
+    user = relationship("User", back_populates="job_applications")
+    job = relationship("JobListing", back_populates="applications")
+    resume = relationship("FileMetadata", back_populates="job_applications")
+
+    def __repr__(self):
+        return f"<JobApplication(id={self.id}, user_id={self.user_id}, job_id={self.job_id}, status={self.status})>"
 
 # Initialize database after all models are defined
 from .config import init_database

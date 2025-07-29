@@ -116,19 +116,19 @@ Base URL: `/v1`
 
 ---
 
-## Workflow Control
+## Workflow Management (Agent Orchestration Service)
 
-### GET `/v1/status`
-- **Summary:** Get workflow status (running, last/next run).
+### GET `/v1/workflow/status`
+- **Summary:** Get the current status of the main workflow.
+- **Response:**
+  - `{ "is_running": true, "last_state_change": 1678886400.0 }`
 
-### POST `/v1/workflow/pause`
-- **Summary:** Pause the workflow.
-
-### POST `/v1/workflow/resume`
-- **Summary:** Resume the workflow.
-
-### POST `/v1/workflow/stop`
-- **Summary:** Stop the workflow.
+### PUT `/v1/workflow/status`
+- **Summary:** Update the status of the main workflow (e.g., pause or resume).
+- **Request Body:**
+  - `{ "is_running": false }`
+- **Response:**
+  - The updated status object.
 
 ---
 

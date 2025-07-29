@@ -57,6 +57,13 @@ def process_resume_upload_task(
 
 
 @celery_app.task
+def run_unicorn_agent_task(request_data: dict):
+    logger.info(f"Received run_unicorn_agent_task with data: {request_data}")
+    # TODO: Implement the actual job application workflow here
+    return {"status": "success", "message": "Unicorn Agent task received and processed (placeholder)."}
+
+
+@celery_app.task
 def calculate_ats_score_task(
     resume_file_path: str, resume_content_type: str, job_description: str
 ):

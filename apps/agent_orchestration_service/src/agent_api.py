@@ -5,6 +5,7 @@ from packages.database.config import SessionLocal
 from packages.agents.agent_manager import AgentManager
 from pydantic import BaseModel
 from typing import Dict, Any, Generator
+from frontend.lib.applications import ApplicationSubmissionResponse
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
 from packages.database.models import User
@@ -12,6 +13,10 @@ import logging
 from packages.config.settings import settings
 from packages.errors.custom_exceptions import JobApplierException
 from apps.job_applier_agent.src.main import job_apply_counter
+import google.generativeai as genai
+import json
+
+genai.configure(api_key=settings.GEMINI_API_KEY)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -112,7 +117,7 @@ async def apply_for_job_endpoint(
     application_data: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> ApplicationSubmissionResponse:
     """Automate job application.
 
     This endpoint uses the `ApplicationAutomationAgent` to automate the job application process
@@ -138,7 +143,16 @@ async def apply_for_job_endpoint(
         logger.info(
             f"User {current_user.username} successfully initiated job application."
         )
-        return {"message": "Application process initiated", "result": result}
+        job_match_score = result.get("job_match_score", 0.0)
+        return ApplicationSubmissionResponse(
+            application_status="submitted",
+            job_match_score=job_match_score,
+            error_handling={
+                "retry_attempts": 0,
+                "fallback_used": False,
+                "last_known_issue": None,
+            },
+        )
     except SQLAlchemyError as e:
         logger.error(
             f"Database error during application automation for user {current_user.username}: {e}",
@@ -161,19 +175,21 @@ async def apply_for_job_endpoint(
         )
 
 
-@router.post("/coverletter/generate")
+class CoverLetterRequest(BaseModel):
+    resume_content: str
+    job_description: str
+    user_preferences: Dict[str, Any] = {}
+
+@router.post("/coverletter/generate", summary="Generate a cover letter using Gemini 2.5 Flash")
 async def generate_cover_letter_endpoint(
-    cover_letter_data: Dict[str, Any],
+    request: CoverLetterRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Generate a cover letter.
-
-    This endpoint uses the `CoverLetterGeneratorAgent` to generate a cover letter
-    based on the provided data.
+    """Generate a cover letter using Gemini 2.5 Flash based on resume content and job description.
 
     Args:
-        cover_letter_data (Dict[str, Any]): A dictionary containing data required for cover letter generation.
+        request (CoverLetterRequest): Request body containing resume content, job description, and user preferences.
         db (Session): Database session dependency.
         current_user (User): The authenticated user object.
 
@@ -183,26 +199,106 @@ async def generate_cover_letter_endpoint(
     Raises:
         HTTPException: If an error occurs during cover letter generation.
     """
-    # [CONTEXT] Endpoint to generate a cover letter using the CoverLetterGeneratorAgent.
     try:
-        agent_manager = AgentManager(db)
-        cover_letter_agent = agent_manager.get_cover_letter_generator_agent()
-        generated_letter = cover_letter_agent.generate_cover_letter(cover_letter_data, job_description="")
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        
+        prompt = f"""
+        You are a highly capable, production-grade Job Application Agent powered by Gemini 2.5 Flash. Your core responsibility is to automate and optimize the job search and application process for users by intelligently analyzing resumes, matching them to job postings, and executing applications, even under unreliable network conditions or API failures.
+
+        Your capabilities include:
+        - Parsing structured resume data from raw text or uploaded files.
+        - Scraping and semantically analyzing job descriptions.
+        - Matching candidate profiles to job roles using vector similarity and contextual reasoning.
+        - Scoring job fit using ATS standards and keyword density.
+        - Generating tailored, concise, and ATS-optimized cover letters.
+        - Submitting applications autonomously with robust error handling and fallback strategies.
+
+        ### Behavior Rules:
+        1. Resilience First: Handle API fetch errors using retries (max 3), cache fallback, or graceful degradation. Never crash or produce null outputs.
+        2. High Match Accuracy: Prioritize context-aware matching — match by job title, skills, tools, experience, and domain.
+        3. Personalization: Adapt tone and content based on job level, company type, and role description.
+        4. Structured Output: Always respond with structured JSON that can be directly used by the backend or frontend services.
+        5. Security & Privacy: Never log or leak any personal user data. All data is transient and context-bound.
+
+        ### Input:
+        You may receive:
+        - `resume_content`: Plaintext or parsed JSON
+        - `job_description`: Full job listing
+        - `user_preferences`: Location, role, domain, work mode, etc.
+        - `system_state`: Retry count, cached matches, or error flags
+
+        ### Output Schema (JSON):
+        ```json
+        {
+          "job_match_score": 87.4,
+          "ats_score": 92.1,
+          "matched_keywords": ["Python", "FastAPI", "LLMs", "Celery"],
+          "missing_keywords": ["Docker", "CI/CD"],
+          "cover_letter": "Dear Hiring Manager, I am excited to apply for...",
+          "application_status": "submitted | retrying | failed_gracefully",
+          "error_handling": {
+            "retry_attempts": 2,
+            "fallback_used": true,
+            "last_known_issue": "fetch_error"
+          }
+        }
+        ```
+
+        ### Execution Logic:
+
+        * Always validate inputs before processing.
+        * If job description is missing, return a response indicating insufficient data.
+        * If resume is unstructured, use NLP to extract sections (skills, education, experience).
+        * Prioritize roles with ≥80% skill match and above-average ATS score.
+        * On repeated fetch errors, use cached job listings or notify user via output flag.
+
+        You are an expert job applier — fast, intelligent, resilient. Think like a recruiter, act like an agent.
+
+        Please generate a tailored, concise, and ATS-optimized cover letter based on the following resume content and job description. Also, provide the job match score, ATS score, matched keywords, and missing keywords in the specified JSON format.
+
+        Resume Content:
+        {request.resume_content}
+
+        Job Description:
+        {request.job_description}
+
+        User Preferences:
+        {request.user_preferences}
+        """
+        
+        response = model.generate_content(prompt)
+        
+        # Assuming the response is directly the JSON string
+        generated_content = response.text
+        
+        # Parse the JSON response
+        try:
+            parsed_response = json.loads(generated_content)
+            generated_letter = parsed_response.get("cover_letter", "")
+            job_match_score = parsed_response.get("job_match_score", 0.0)
+            ats_score = parsed_response.get("ats_score", 0.0)
+            matched_keywords = parsed_response.get("matched_keywords", [])
+            missing_keywords = parsed_response.get("missing_keywords", [])
+        except json.JSONDecodeError:
+            logger.error(f"Failed to decode JSON from Gemini response: {generated_content}")
+            raise JobApplierException(
+                message="Failed to parse Gemini response for cover letter generation.",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details={"gemini_response": generated_content}
+            )
+
         logger.info(
             f"User {current_user.username} successfully generated cover letter."
         )
         return {
             "message": "Cover letter generated successfully",
             "cover_letter": generated_letter,
+            "job_match_score": job_match_score,
+            "ats_score": ats_score,
+            "matched_keywords": matched_keywords,
+            "missing_keywords": missing_keywords,
         }
-    except SQLAlchemyError as e:
-        logger.error(
-            f"Database error during cover letter generation for user {current_user.username}: {e}",
-            exc_info=True,
-        )
-        raise JobApplierException(
-            message="Failed to generate cover letter due to a database error.",
-        )
     except Exception as e:
         logger.error(
             f"An unexpected error occurred during cover letter generation for user {current_user.username}: {e}",

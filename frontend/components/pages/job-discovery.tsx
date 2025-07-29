@@ -10,8 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Search, MapPin, Calendar, DollarSign, Building2, Clock, CheckCircle, Filter, Star, Loader2 } from "lucide-react"
+import { Search, MapPin, Calendar, DollarSign, Building2, Clock, CheckCircle, Filter, Star, Loader2, Zap } from "lucide-react"
 import { useApiServices } from '@/lib/api-context';
+import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Types for job data
 export interface Job {
@@ -31,35 +33,13 @@ export interface Job {
   source?: string;
 }
 
-// ErrorBoundary component
-function ErrorBoundary({ children }: { children: React.ReactNode }) {
-  const [error, setError] = useState<Error | null>(null)
-  return error ? (
-    <Alert variant="destructive" className="mb-4" role="alert" aria-live="assertive">
-      <AlertDescription>
-        <div className="flex justify-between items-center">
-          <span>{error.message || "An unexpected error occurred. Please try again."}</span>
-          <button onClick={() => setError(null)} className="ml-4 text-lg font-bold focus:outline-none" aria-label="Dismiss error">&times;</button>
-        </div>
-      </AlertDescription>
-    </Alert>
-  ) : (
-    <ErrorBoundaryInner setError={setError}>{children}</ErrorBoundaryInner>
-  )
-}
-class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void; children: React.ReactNode }> {
-  componentDidCatch(error: Error) {
-    this.props.setError(error)
-  }
-  render() {
-    return this.props.children
-  }
-}
+
 
 export function JobDiscovery() {
   const [searchQuery, setSearchQuery] = useState("")
   const [location, setLocation] = useState("")
   const [selectedType, setSelectedType] = useState("")
+  const [salaryRange, setSalaryRange] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
@@ -89,7 +69,7 @@ export function JobDiscovery() {
     setTotalJobs(0);
 
     try {
-      const results = await searchJobs(searchQuery, location, 20);
+      const results = await searchJobs(searchQuery, location, selectedType, salaryRange);
 
       if (results && results.jobs) {
         setJobs(results.jobs);
@@ -109,7 +89,7 @@ export function JobDiscovery() {
     } finally {
       setSearching(false);
     }
-  }, [searchQuery, location, searchJobs]);
+  }, [searchQuery, location, selectedType, salaryRange, searchJobs]);
 
   const handleApply = useCallback(async (job: Job) => {
     try {
@@ -143,7 +123,7 @@ export function JobDiscovery() {
   }, []);
 
   return (
-    <ErrorBoundary>
+    <TooltipProvider>
       <main role="main" aria-label="Job Discovery" tabIndex={-1} className="space-y-6 px-2 sm:px-4 md:px-0 focus:outline-none">
         {/* Header */}
         <div>
@@ -198,6 +178,410 @@ export function JobDiscovery() {
                     aria-label="Job location"
                   />
                   <Select value={selectedType} onValueChange={setSelectedType}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Job Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Types</SelectItem>
+                      <SelectItem value="full-time">Full-time</SelectItem>
+                      <SelectItem value="part-time">Part-time</SelectItem>
+                      <SelectItem value="contract">Contract</SelectItem>
+                      <SelectItem value="internship">Internship</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Salary (e.g., $80k - $120k)"
+                    value={salaryRange}
+                    onChange={e => setSalaryRange(e.target.value)}
+                    className="w-full sm:w-48"
+                    aria-label="Salary range"
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-24 lg:hidden"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="h-4 w-4 mr-2" /> Filters
+                  </Button>
+                  <Button
+                    onClick={handleSearch}
+                    className="w-full sm:w-24"
+                    disabled={searching}
+                  >
+                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="ml-2">{searching ? "Searching..." : "Search"}</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showFilters && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Additional filter options can go here */}
+                <p className="text-sm text-muted-foreground col-span-full">More filter options coming soon!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Job Listings */}
+        <section aria-labelledby="job-listings-heading">
+          <h2 id="job-listings-heading" className="text-xl font-bold mb-4">Job Listings ({totalJobs} found)</h2>
+
+          {searching && jobs.length === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-live="polite" aria-atomic="true">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-4 w-[150px]" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-4 w-[250px] mb-2" />
+                    <Skeleton className="h-4 w-[200px] mb-4" />
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Skeleton className="h-10 w-24" />
+                      <Skeleton className="h-10 w-24" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!searching && jobs.length === 0 && !error && (
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No jobs found. Try adjusting your search criteria.</p>
+            </div>
+          )}
+
+          {!searching && jobs.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {jobs.map(job => (
+                <Card key={job.id} className="flex flex-col">
+                  <CardContent className="p-4 flex-grow">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={job.logo} alt={`${job.company} logo`} />
+                          <AvatarFallback>{job.company[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="text-lg font-semibold leading-tight">{job.title}</h3>
+                          <p className="text-sm text-muted-foreground">{job.company}</p>
+                        </div>
+                      </div>
+                      {job.match !== undefined && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className={cn("text-xs font-bold", getMatchColor(job.match))}>
+                              <Zap className="h-3 w-3 mr-1" /> {job.match.toFixed(0)}%
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>AI Match Score: {job.match.toFixed(2)}%</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground mb-2">
+                      <MapPin className="h-4 w-4 mr-1" /> {job.location}
+                      <span className="mx-2">•</span>
+                      <Clock className="h-4 w-4 mr-1" /> {job.type}
+                      {job.salary && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <DollarSign className="h-4 w-4 mr-1" /> {job.salary}
+                        </>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{job.description}</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {job.skills.map((skill, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <div className="p-4 border-t flex justify-between items-center">
+                    <Button variant="outline" size="sm" onClick={() => handleSaveJob(job)}>
+                      <Star className="h-4 w-4 mr-2" /> Save
+                    </Button>
+                    <Button size="sm" onClick={() => handleApply(job)} disabled={job.applied}>
+                      {job.applied ? <CheckCircle className="h-4 w-4 mr-2" /> : null} {job.applied ? "Applied" : "Apply Now"}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+                    className="w-full sm:w-24 lg:hidden"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <Filter className="h-4 w-4 mr-2" /> Filters
+                  </Button>
+                  <Button
+                    onClick={handleSearch}
+                    className="w-full sm:w-24"
+                    disabled={searching}
+                  >
+                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    <span className="ml-2">{searching ? "Searching..." : "Search"}</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showFilters && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Additional filter options can go here */}
+                <p className="text-sm text-muted-foreground col-span-full">More filter options coming soon!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Job Listings */}
+        <section aria-labelledby="job-listings-heading">
+          <h2 id="job-listings-heading" className="text-xl font-bold mb-4">Job Listings ({totalJobs} found)</h2>
+
+          {searching && jobs.length === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-live="polite" aria-atomic="true">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-4 w-[150px]" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-4 w-[250px] mb-2" />
+                    <Skeleton className="h-4 w-[200px] mb-4" />
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <Skeleton className="h-6 w-24 rounded-full" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Skeleton className="h-10 w-24" />
+                      <Skeleton className="h-10 w-24" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!searching && jobs.length === 0 && !error && (
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No jobs found. Try adjusting your search criteria.</p>
+            </div>
+          )}
+
+          {!searching && jobs.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {jobs.map(job => (
+                <Card key={job.id} className="flex flex-col">
+                  <CardContent className="p-4 flex-grow">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={job.logo} alt={`${job.company} logo`} />
+                          <AvatarFallback>{job.company[0]}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="text-lg font-semibold leading-tight">{job.title}</h3>
+                          <p className="text-sm text-muted-foreground">{job.company}</p>
+                        </div>
+                      </div>
+                      {job.match !== undefined && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className={cn("text-xs font-bold", getMatchColor(job.match))}>
+                              <Zap className="h-3 w-3 mr-1" /> {job.match.toFixed(0)}%
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>AI Match Score: {job.match.toFixed(2)}%</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground mb-2">
+                      <MapPin className="h-4 w-4 mr-1" /> {job.location}
+                      <span className="mx-2">•</span>
+                      <Clock className="h-4 w-4 mr-1" /> {job.type}
+                      {job.salary && (
+                        <>
+                          <span className="mx-2">•</span>
+                          <DollarSign className="h-4 w-4 mr-1" /> {job.salary}
+                        </>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4">{job.description}</p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {job.skills.map((skill, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                  <div className="p-4 border-t flex justify-between items-center">
+                    <Button variant="outline" size="sm" onClick={() => handleSaveJob(job)}>
+                      <Star className="h-4 w-4 mr-2" /> Save
+                    </Button>
+                    <Button size="sm" onClick={() => handleApply(job)} disabled={job.applied}>
+                      {job.applied ? <CheckCircle className="h-4 w-4 mr-2" /> : null} {job.applied ? "Applied" : "Apply Now"}
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
+                    onClick={() => setShowFilters(!showFilters)}
+                    aria-expanded={showFilters}
+                    aria-controls="advanced-filters"
+                  >
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                  <Button onClick={handleSearch} className="w-full sm:w-24">
+                    <Search className="w-4 h-4 mr-2" />
+                    Search
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showFilters && (
+              <div id="advanced-filters" className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* More advanced filters can go here */}
+                <Input placeholder="Experience Level" aria-label="Experience Level" />
+                <Input placeholder="Company Size" aria-label="Company Size" />
+                <Input placeholder="Remote/On-site" aria-label="Remote or On-site" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Job Listings */}
+        <div className="grid gap-4">
+          {searching ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-full mt-4" />
+                  <Skeleton className="h-4 w-full mt-2" />
+                  <div className="flex justify-end mt-4 space-x-2">
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-24" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : jobs.length > 0 ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Showing {jobs.length} of {totalJobs} jobs</p>
+              {jobs.map((job) => (
+                <Card key={job.id} className="relative">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-4">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={job.logo} alt={`${job.company} logo`} />
+                        <AvatarFallback>{job.company.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h2 className="text-lg font-semibold leading-tight">{job.title}</h2>
+                        <p className="text-sm text-muted-foreground">{job.company} &bull; {job.location}</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Badge variant="secondary" className="flex items-center gap-1"><Clock className="w-3 h-3" /> {job.type}</Badge>
+                          {job.salary && <Badge variant="secondary" className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {job.salary}</Badge>}
+                          <Badge variant="secondary" className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {job.posted}</Badge>
+                          {job.source && <Badge variant="secondary" className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {job.source}</Badge>}
+                        </div>
+                        <div className="mt-3 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
+                          {job.description}
+                        </div>
+                        {job.skills && job.skills.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Skills:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {job.skills.map((skill, idx) => (
+                                <Badge key={idx} variant="outline">{skill}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {job.match !== undefined && ( // Only show match score if available
+                        <div className="flex flex-col items-end">
+                          <Badge className={cn("text-sm font-bold", getMatchColor(job.match))}>
+                            {job.match.toFixed(1)}% Match
+                          </Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 mt-1 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>AI Match Score</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      {job.applied ? (
+                        <Button variant="outline" disabled className="flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" /> Applied
+                        </Button>
+                      ) : (
+                        <Button onClick={() => handleApply(job)} className="flex items-center gap-1">
+                          <Zap className="w-4 h-4" /> Apply Now
+                        </Button>
+                      )}
+                      <Button variant="secondary" onClick={() => handleSaveJob(job)}>
+                        Save Job
+                      </Button>
+                      {job.url && (
+                        <Button variant="outline" asChild>
+                          <a href={job.url} target="_blank" rel="noopener noreferrer">
+                            View Original
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : ( !searching &&
+            <div className="text-center py-10">
+              <p className="text-muted-foreground">No jobs found. Try adjusting your search or filters.</p>
+            </div>
+          )}
+        </div>
+      </main>
+    </TooltipProvider>
+    </ErrorBoundary>
                     <SelectTrigger className="w-full sm:w-40" aria-label="Job type filter">
                       <SelectValue placeholder="Job Type" />
                     </SelectTrigger>

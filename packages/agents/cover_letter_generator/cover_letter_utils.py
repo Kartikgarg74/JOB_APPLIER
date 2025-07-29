@@ -34,7 +34,7 @@ def fetch_company_info(company_name: str) -> str:
 
 
 def construct_cover_letter_prompt(
-    resume_data: Dict[str, Any], job_description: str, style: str = 'formal', company_name: Optional[str] = None, company_info: Optional[str] = None, tone: str = 'professional'
+    resume_data: Dict[str, Any], job_description: str, user_preferences: Dict[str, Any] = None, company_name: Optional[str] = None, company_info: Optional[str] = None
 ) -> str:
     """
     [CONTEXT] Constructs the prompt for generating a personalized cover letter.
@@ -58,6 +58,9 @@ def construct_cover_letter_prompt(
     matched_skills = applicant_skills.intersection(job_keywords)
     matched_skills_str = ", ".join(matched_skills) if matched_skills else "(AI: Please infer and match relevant skills from resume and job description)"
     unique_strengths = resume_data.get("unique_strengths", "(AI: Please highlight unique strengths from resume)")
+
+    style = user_preferences.get('style', 'formal') if user_preferences else 'formal'
+    tone = user_preferences.get('tone', 'professional') if user_preferences else 'professional'
 
     # Template instructions based on style
     if style == 'formal':

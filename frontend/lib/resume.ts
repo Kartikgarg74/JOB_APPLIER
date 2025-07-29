@@ -1,3 +1,4 @@
+import { fetchWithRetry } from './fetchWithRetry';
 import { API_CONFIG, getServiceUrl } from './config';
 
 // Types for Resume Upload
@@ -11,9 +12,9 @@ export async function uploadResume(resumeFile: File): Promise<UploadResult> {
   const formData = new FormData();
   formData.append("file", resumeFile);
 
-  const url = getServiceUrl('JOB_APPLIER_AGENT', API_CONFIG.ENDPOINTS.UPLOAD_RESUME);
+  const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', API_CONFIG.ENDPOINTS.UPLOAD_RESUME);
 
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
     body: formData,
   });

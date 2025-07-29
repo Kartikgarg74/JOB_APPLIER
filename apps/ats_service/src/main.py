@@ -1,20 +1,25 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, Gauge, Histogram
 from fastapi import Response as FastAPIResponse
 from contextlib import asynccontextmanager
 import logging
 import time
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
 
-from .ats_api import router as ats_router
-from .metrics import ats_score_counter, job_search_counter, error_counter, uptime_gauge, startup_time, request_count, request_latency
+from apps.ats_service.src.ats_api import router as ats_router
+from apps.ats_service.src.metrics import ats_score_counter, job_search_counter, error_counter, uptime_gauge, startup_time, request_count, request_latency
 
 setup_logging()
 
@@ -42,6 +47,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 class PerformanceLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -105,18 +118,22 @@ async def job_applier_exception_handler(request, exc: JobApplierException):
         },
     )
 
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     error_counter.inc()
     logging.error(f"Validation Error: {exc.errors()}", exc_info=True)
     return JSONResponse(
         status_code=422,
-        content={"message": "Validation Error", "details": exc.errors()},
+        content={"message": "Validation Error", "details": jsonable_encoder([err for err in exc.errors()])},
     )
 
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to the ATS Service API"}
+
+
 
 app.include_router(ats_router)
 

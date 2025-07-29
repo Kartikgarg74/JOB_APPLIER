@@ -1,7 +1,9 @@
 # apps/job-applier-agent/src/main.py
 
-import sys
-import os
+from dotenv import load_dotenv
+load_dotenv()
+
+
 import logging
 import time
 import json
@@ -15,6 +17,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, Gauge, Histogram
 from fastapi import Response as FastAPIResponse
 from contextlib import asynccontextmanager
+import redis.asyncio as redis
+from fastapi_limiter import FastAPILimiter
+from packages.config.settings import REDIS_URL, REDIS_TOKEN
 
 from packages.utilities.logging_utils import setup_logging
 from apps.job_applier_agent.src.metrics import (
@@ -23,10 +28,9 @@ from apps.job_applier_agent.src.metrics import (
 )
 
 # Import the API router from the local api.py file
-from .api import router as job_applier_api_app
+from fastapi import APIRouter
+from .api import (auth_router, applications_router, resumes_router, profile_router, notifications_router)
 
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 setup_logging()
 
@@ -34,6 +38,14 @@ setup_logging()
 async def lifespan(app: FastAPI):
     global startup_time
     startup_time = time.time()
+    redis_instance = redis.Redis(
+        host="localhost",
+        port=6379,
+        encoding="utf-8",
+        decode_responses=True,
+        ssl=False
+    )
+    await FastAPILimiter.init(redis_instance)
     yield
 
 app = FastAPI(
@@ -128,7 +140,13 @@ async def read_root():
     return {"message": "Welcome to the Job Applier API"}
 
 
-app.include_router(job_applier_api_app)
+v1_router = APIRouter(prefix="/v1")
+v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+v1_router.include_router(applications_router)
+v1_router.include_router(resumes_router)
+v1_router.include_router(profile_router)
+v1_router.include_router(notifications_router)
+app.include_router(v1_router)
 
 
 class PrometheusMiddleware(BaseHTTPMiddleware):

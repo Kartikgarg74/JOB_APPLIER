@@ -19,10 +19,12 @@ config = context.config
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
 
-# Set the SQLAlchemy URL from environment variable
-supabase_url = os.getenv("SUPABASE_DB_URL") or config.get_main_option("sqlalchemy.url")
-if supabase_url:
-    config.set_main_option("sqlalchemy.url", supabase_url)
+# Set the SQLAlchemy URL from SUPABASE_DB_URL only
+# supabase_url = os.getenv("SUPABASE_DB_URL")
+supabase_url = "postgresql://postgres.gbmkiycdhysljzmvrenm:AFjOX6tPrzrlqA1W@aws-0-us-east-2.pooler.supabase.com:6543/postgres"
+if not supabase_url:
+    raise RuntimeError("SUPABASE_DB_URL environment variable must be set for Alembic migrations.")
+config.set_main_option("sqlalchemy.url", supabase_url)
 
 # Print the DB URL for debugging
 print(f"[Alembic] Using database URL: {supabase_url}")

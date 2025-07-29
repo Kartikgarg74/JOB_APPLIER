@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+celery
+redis
+requests
+beautifulsoup4
+lxml
+psycopg2-binary
+tenacity
+prometheus-client

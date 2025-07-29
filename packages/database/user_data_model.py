@@ -18,7 +18,7 @@ class UserDatabase:
 
     def add_user(self, session: Session, username: str, email: str, hashed_password: str) -> User:
         try:
-            new_user = User(username=username, email=email, password=hashed_password)
+            new_user = User(username=username, _email=email, hashed_password=hashed_password)
             session.add(new_user)
             session.commit()
             return new_user
@@ -37,7 +37,7 @@ class UserDatabase:
     def add_user_google(self, session: Session, username: str, email: str, google_id: str, image_url: Optional[str] = None) -> User:
         try:
             new_user = User(
-                username=username, email=email, google_id=google_id, image=image_url
+                username=username, _email=email, google_id=google_id, image=image_url
             )
             session.add(new_user)
             session.commit()
@@ -349,14 +349,15 @@ class UserDatabase:
              session.close()
 
 
-def log_audit(session: Session, user_id: int, action: str, table: str, row_id: int = None, details: dict = None):
+def log_audit(session: Session, user_id: int, action: str, table: str, row_id: int = None):
     from packages.database.models import AuditLog
+
     audit = AuditLog(
         user_id=user_id,
         action=action,
         table_name=table,
         row_id=row_id,
-        details=details or {},
+
     )
     session.add(audit)
     session.commit()

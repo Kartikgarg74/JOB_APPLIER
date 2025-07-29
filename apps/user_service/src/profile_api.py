@@ -291,7 +291,7 @@ async def update_user_profile(
         db.refresh(user)
         profile_update_counter.inc()
         logging.info(f"AUDIT: Profile updated for user ID: {current_user.id}")
-        log_audit(db, current_user.id, "profile_update", "users", current_user.id, {"fields": list(profile_data.dict(exclude_unset=True).keys())})
+        log_audit(db, current_user.id, "profile_update", "users", current_user.id)
         logger.info(f"Successfully updated profile for user ID: {current_user.id}")
         try:
             notification_service.send_success_notification(
@@ -382,7 +382,7 @@ async def create_user_profile(
         db.refresh(user)
         profile_update_counter.inc()
         logging.info(f"AUDIT: Profile created/updated for user ID: {current_user.id}")
-        log_audit(db, current_user.id, "profile_create_or_update", "users", current_user.id, {"fields": list(profile_data.dict(exclude_unset=True).keys())})
+        log_audit(db, current_user.id, "profile_create_or_update", "users", current_user.id)
         logger.info(f"Successfully created/updated profile for user ID: {current_user.id}")
         try:
             notification_service.send_success_notification(

@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.engine.url import URL
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy import event
 
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL")
@@ -19,7 +19,7 @@ SQLALCHEMY_DATABASE_URL = SUPABASE_DB_URL or str(URL.create(**DATABASE))
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+class Base(DeclarativeBase): pass
 
 # Helper for audit logging
 
@@ -36,7 +36,7 @@ def auto_log_audit(mapper, connection, target, action):
         table_name=table,
         row_id=row_id,
         timestamp=datetime.utcnow(),
-        details=details,
+
     )
     connection.execute(ins)
 

@@ -1,168 +1,278 @@
+import { fetchWithRetry } from './fetchWithRetry';
 import { API_CONFIG, getServiceUrl } from './config';
-import { getApplications, createApplication, updateApplication, deleteApplication } from './supabase';
 
-// Types for Application Tracking
+// This is the primary data type used by the UI components.
 export interface Application {
   id: number;
   company: string;
   position: string;
   status: 'Applied' | 'Interview' | 'Rejected' | 'Offer' | 'On Hold';
-  appliedDate: string;
+  appliedDate: string; // ISO string
   salary: string;
   location: string;
-  logo?: string;
-  atsScore: number;
   notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  jobUrl?: string | null;
+  // Fields below are not yet supported by the new API but kept for UI compatibility
+  logo?: string;
+  atsScore?: number;
 }
 
-// API call to fetch applications - now uses Supabase
-export async function fetchApplications(): Promise<Application[]> {
-  try {
-    // First try to get from Supabase (real data)
-    const supabaseData = await getApplications();
-    if (supabaseData && supabaseData.length > 0) {
-      return supabaseData.map((app: any) => ({
-        id: app.id,
-        company: app.company || 'Unknown Company',
-        position: app.position || 'Unknown Position',
-        status: app.status || 'Applied',
-        appliedDate: app.applied_date || app.created_at || new Date().toISOString(),
-        salary: app.salary || 'Not specified',
-        location: app.location || 'Remote',
-        logo: app.logo,
-        atsScore: app.ats_score || 0,
-        notes: app.notes,
-        created_at: app.created_at,
-        updated_at: app.updated_at
-      }));
-    }
+export interface ApplicationSubmissionRequest {
+  job_id: string;
+  user_id: string;
+  resume_id: string;
+  cover_letter_content?: string;
+  application_url: string;
+  additional_data?: Record<string, any>;
+}
 
-    // Fallback to backend API if no Supabase data
-    const url = getServiceUrl('JOB_APPLIER_AGENT', API_CONFIG.ENDPOINTS.NOTIFICATIONS);
-    const result = await fetch(url);
-    if (!result.ok) {
-      throw new Error("Failed to fetch applications");
+export interface ApplicationSubmissionResponse {
+  status: string;
+  message: string;
+  application_id?: string;
+  details?: Record<string, any>;
+}
+
+// This interface matches the raw data from the backend API
+export interface ApiApplication {
+  id: number;
+  user_id: number;
+  job_id: string;
+  status: string;
+  applied_at: string;
+  updated_at: string;
+  resume_id: number | null;
+  cover_letter: string | null;
+  job: {
+    title: string;
+    company: string;
+    location: string;
+    salary: string | null;
+    url: string | null;
+  };
+}
+
+// Data required for creating a new application
+export interface CreateApplicationData {
+  userId: number;
+  jobId: string;
+  status: Application['status'];
+  resumeId?: number;
+  notes?: string; // Mapped to cover_letter
+}
+
+// Data required for updating an application
+export interface UpdateApplicationData {
+  status: 'Applied' | 'Interview' | 'Rejected' | 'Offer' | 'On Hold';
+  notes?: string;
+  resumeId?: number;
+}
+
+// Helper to map API response to the UI's Application type
+function mapApiToUiApplication(apiApp: ApiApplication): Application {
+  return {
+    id: apiApp.id,
+    company: apiApp.job.company,
+    position: apiApp.job.title,
+    status: apiApp.status as Application['status'],
+    appliedDate: apiApp.applied_at,
+    salary: apiApp.job.salary || 'N/A',
+    location: apiApp.job.location,
+    notes: apiApp.cover_letter || undefined,
+    jobUrl: apiApp.job.url,
+    atsScore: 0, // Placeholder
+  };
+}
+
+// --- CRUD Functions --- 
+
+/**
+ * Fetches all job applications for a given user.
+ * @param userId The ID of the user.
+ * @returns A promise that resolves to an array of applications.
+ */
+export async function fetchApplications(userId: number): Promise<Application[]> {
+  try {
+    const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', `/v1/applications/${userId}`);
+    const response = await fetchWithRetry(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch applications: ${response.statusText}`);
     }
-    return result.json();
+    const apiApplications: ApiApplication[] = await response.json();
+    return apiApplications.map(mapApiToUiApplication);
   } catch (error) {
     console.error('Error fetching applications:', error);
-    throw new Error("Failed to fetch applications");
+    // Return empty array on error to prevent UI crashes
+    return [];
   }
 }
 
-// API call to apply for a job - now stores in Supabase
-export async function applyForJob(jobUrl: string): Promise<void> {
-  try {
-    // First try backend API
-    const formData = new FormData();
-    formData.append("job_posting_url", jobUrl);
+export async function matchJobs(userProfile: { jobTitle?: string, location?: string }): Promise<any> {
+  // This function is being refactored to use the existing /v1/job-search endpoint
+  // on the JOB_APPLIER_AGENT service, as the originally intended endpoint does not exist.
+  const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', '/v1/job-search');
 
-    const url = getServiceUrl('JOB_APPLIER_AGENT', API_CONFIG.ENDPOINTS.APPLY_JOB);
-
-    const result = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!result.ok) {
-      throw new Error("Failed to apply for job via backend");
-    }
-
-    const backendResponse = await result.json();
-
-    // Store in Supabase
-    await createApplication({
-      company: backendResponse.company || 'Unknown Company',
-      position: backendResponse.position || 'Unknown Position',
-      status: 'Applied',
-      applied_date: new Date().toISOString(),
-      salary: backendResponse.salary || 'Not specified',
-      location: backendResponse.location || 'Remote',
-      ats_score: backendResponse.ats_score || 0,
-      notes: `Applied via: ${jobUrl}`,
-      job_url: jobUrl
-    });
-
-  } catch (error) {
-    console.error('Error applying for job:', error);
-    throw new Error("Failed to apply for job");
-  }
-}
-
-// API call to match jobs using Agent Orchestration Service
-export async function matchJobs(userProfile: any): Promise<any> {
-  const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', API_CONFIG.ENDPOINTS.MATCH_JOBS);
-
-  const result = await fetch(url, {
+  const result = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ user_profile: userProfile }),
+    body: JSON.stringify({
+      query: userProfile.jobTitle || "Software Engineer", // Default query if not provided
+      location: userProfile.location || "",
+      num_results: 20,
+    }),
   });
 
   if (!result.ok) {
     let errMsg = "Failed to match jobs";
     try {
       const err = await result.json();
-      errMsg = err.message || errMsg;
+      errMsg = err.detail || err.message || errMsg;
     } catch {}
     throw new Error(errMsg);
   }
   return result.json();
 }
 
-// New function to create application manually
-export async function createApplicationManually(application: Omit<Application, 'id'>): Promise<Application> {
+/**
+ * Creates a new job application record.
+ * @param appData The data for the new application.
+ * @returns A promise that resolves to the newly created application.
+ */
+export async function createApplication(appData: CreateApplicationData): Promise<Application> {
   try {
-    const newApp = await createApplication({
-      company: application.company,
-      position: application.position,
-      status: application.status,
-      applied_date: application.appliedDate,
-      salary: application.salary,
-      location: application.location,
-      logo: application.logo,
-      ats_score: application.atsScore,
-      notes: application.notes
+    const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', '/v1/applications/');
+    const response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: appData.userId,
+        job_id: appData.jobId,
+        status: appData.status,
+        resume_id: appData.resumeId,
+        cover_letter: appData.notes,
+      }),
     });
-
-    return {
-      id: newApp.id,
-      company: newApp.company,
-      position: newApp.position,
-      status: newApp.status,
-      appliedDate: newApp.applied_date,
-      salary: newApp.salary,
-      location: newApp.location,
-      logo: newApp.logo,
-      atsScore: newApp.ats_score,
-      notes: newApp.notes
-    };
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to create application: ${errorData.detail}`);
+    }
+    const newApiApp: ApiApplication = await response.json();
+    return mapApiToUiApplication(newApiApp);
   } catch (error) {
     console.error('Error creating application:', error);
-    throw new Error("Failed to create application");
+    throw error;
   }
 }
 
-// New function to update application
-export async function updateApplicationStatus(id: number, status: Application['status'], notes?: string): Promise<void> {
+/**
+ * Submits a job application through the Agent Orchestration Service.
+ * @param submissionData The data required for submitting the application.
+ * @returns A promise that resolves to the submission response.
+ */
+export async function submitJobApplication(submissionData: ApplicationSubmissionRequest): Promise<ApplicationSubmissionResponse> {
   try {
-    await updateApplication(id, { status, notes });
+    const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', '/applications/submit');
+    const response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(submissionData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to submit application: ${errorData.detail}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error submitting job application:', error);
+    throw error;
+  }
+}
+
+/**
+ * Updates an existing job application.
+ * @param applicationId The ID of the application to update.
+ * @param updateData The data to update.
+ * @returns A promise that resolves to the updated application.
+ */
+export async function updateApplication(
+  applicationId: number,
+  updateData: UpdateApplicationData
+): Promise<Application> {
+  try {
+    const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', `/v1/applications/${applicationId}`);
+    const response = await fetchWithRetry(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: updateData.status,
+        resume_id: updateData.resumeId,
+        cover_letter: updateData.notes,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to update application: ${errorData.detail}`);
+    }
+    const updatedApiApp: ApiApplication = await response.json();
+    return mapApiToUiApplication(updatedApiApp);
   } catch (error) {
     console.error('Error updating application:', error);
-    throw new Error("Failed to update application");
+    throw error;
   }
 }
 
-// New function to delete application
-export async function deleteApplicationById(id: number): Promise<void> {
+/**
+ * Deletes a job application.
+ * @param applicationId The ID of the application to delete.
+ * @returns A promise that resolves when the application is deleted.
+ */
+export async function deleteApplication(applicationId: number): Promise<void> {
   try {
-    await deleteApplication(id);
+    const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', `/v1/applications/${applicationId}`);
+    const response = await fetchWithRetry(url, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to delete application: ${errorData.detail}`);
+    }
   } catch (error) {
     console.error('Error deleting application:', error);
-    throw new Error("Failed to delete application");
+    throw error;
+  }
+}
+
+/**
+ * Sends a request to the job applier agent to apply for a job.
+ * @param userId The ID of the user applying.
+ * @param jobId The ID of the job to apply for.
+ * @returns A promise that resolves with the application status.
+ */
+export async function applyForJob(userId: number, jobId: string): Promise<any> {
+  try {
+    const url = getServiceUrl('AGENT_ORCHESTRATION_SERVICE', '/v1/apply');
+    const response = await fetchWithRetry(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        job_id: jobId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to apply for job: ${errorData.detail}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Error applying for job:', error);
+    throw error;
   }
 }

@@ -154,14 +154,6 @@ export function Dashboard() {
               Ready to supercharge your job search? You have 3 new job matches waiting for you.
             </p>
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full">
-              <Button size="lg" className="bg-white text-purple-600 hover:bg-white/90 w-full sm:w-auto" onClick={() => handleQuickAction('Start New Scan')}>
-                <Search className="w-5 h-5 mr-2" />
-                Start New Scan
-              </Button>
-              <Button size="lg" variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent w-full sm:w-auto" onClick={() => handleQuickAction('Update Resume')}>
-                <Upload className="w-5 h-5 mr-2" />
-                Update Resume
-              </Button>
             </div>
           </div>
         </div>
