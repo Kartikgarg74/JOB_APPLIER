@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@repo/ui"],
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -7,8 +8,37 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+        port: "",
+        pathname: "/**",
+      },
+    ],
   },
-}
+  async headers() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self' ${supabaseUrl} *.supabase.co;`,
+          },
+        ],
+      },
+    ];
+  },
+  rewrites: async () => {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://localhost:8000/:path*",
+      },
+    ];
+  },
+};
 
-export default nextConfig
+export default nextConfig;

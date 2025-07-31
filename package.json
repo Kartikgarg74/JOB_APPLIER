@@ -22,9 +22,11 @@
     "@supabase/ssr": "^0.6.1",
     "@tremor/react": "^3.18.7",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.3.8",
     "swr": "^2.3.4"
   },
   "devDependencies": {
+    "@types/node": "^24.1.0",
     "rollup": "^2.79.2"
   }
 }

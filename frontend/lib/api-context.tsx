@@ -1,9 +1,10 @@
 "use client";
 import React, { createContext, useContext, ReactNode } from 'react';
-import { fetchApplications, createApplication, matchJobs, updateApplication, deleteApplication, applyForJob } from './applications';
+import { fetchApplications, createApplication, matchJobs, updateApplication, deleteApplication, submitJobApplication } from './applications';
 import { uploadResume } from './resume';
 import { searchJobs, fetchAtsScore } from './ats';
 import { getUserProfile, updateUserProfile, getEducation, createEducation, getExperience, createExperience, getSkills, createSkill } from './user';
+import axios, { AxiosInstance } from 'axios';
 
 // Types for API services
 export interface ApiServices {
@@ -13,7 +14,7 @@ export interface ApiServices {
   matchJobs: typeof matchJobs;
   updateApplication: typeof updateApplication;
   deleteApplication: typeof deleteApplication;
-  applyForJob: typeof applyForJob;
+  submitJobApplication: typeof submitJobApplication;
 
   // File upload
   uploadResume: typeof uploadResume;
@@ -31,6 +32,7 @@ export interface ApiServices {
   createExperience: typeof createExperience;
   getSkills: typeof getSkills;
   createSkill: typeof createSkill;
+  AGENT_ORCHESTRATION_SERVICE: AxiosInstance;
 }
 
 // Create the context
@@ -45,7 +47,7 @@ export function ApiProvider({ children }: { children: ReactNode }) {
     matchJobs,
     updateApplication,
     deleteApplication,
-    applyForJob,
+    submitJobApplication,
 
     // File upload
     uploadResume,
@@ -63,6 +65,9 @@ export function ApiProvider({ children }: { children: ReactNode }) {
     createExperience,
     getSkills,
     createSkill,
+    AGENT_ORCHESTRATION_SERVICE: axios.create({
+      baseURL: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL || 'http://localhost:8000/api',
+    }),
   };
 
   return (

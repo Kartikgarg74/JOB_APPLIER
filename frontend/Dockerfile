@@ -7,6 +7,8 @@ WORKDIR /app
 # Copy package.json and yarn.lock (or package-lock.json) to the working directory
 COPY package.json yarn.lock* ./
 
+# Set Yarn cache directory to a writable location
+ENV YARN_CACHE_FOLDER=/tmp/.yarn-cache
 # Install dependencies
 RUN yarn install --frozen-lockfile
 

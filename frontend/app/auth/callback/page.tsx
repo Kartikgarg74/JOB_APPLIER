@@ -1,18 +1,20 @@
-import { createRouteHandlerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+'use client';
 
-export const dynamic = 'force-dynamic'
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+export default function CallbackPage() {
+  const router = useRouter();
 
-export async function GET(request: Request) {
-  const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
+  useEffect(() => {
+    // This page is primarily for handling the redirect from Supabase OAuth.
+    // The actual session exchange happens in the API route.
+    // We can redirect to the dashboard or a loading state here.
+    router.push('/');
+  }, [router]);
 
-  if (code) {
-    const supabase = createRouteHandlerClient({ cookies })
-    await supabase.auth.exchangeCodeForSession(code)
-  }
-
-  // URL to redirect to after sign in process completes
-  return NextResponse.redirect(requestUrl.origin)
+  return (
+    <div>
+      <p>Processing authentication...</p>
+    </div>
+  );
 }

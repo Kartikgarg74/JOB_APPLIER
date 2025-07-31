@@ -365,7 +365,7 @@ function SubmitApplicationModal({ isOpen, onClose, userId }: SubmitApplicationMo
               value={formData.additionalData}
               onChange={(e) => setFormData({ ...formData, additionalData: e.target.value })}
               rows={3}
-              placeholder="e.g., {\"source\": \"LinkedIn\"}"
+              placeholder='e.g., {"source": "LinkedIn"}'
             />
           </div>
           {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
@@ -405,7 +405,7 @@ export function ApplicationsTracker({ userId, jobId }: ApplicationsTrackerProps)
   const [showSubmitApplicationModal, setShowSubmitApplicationModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  const { fetchApplications, applyForJob, uploadResume: uploadResumeService } = useApiServices();
+  const { fetchApplications, submitJobApplication, uploadResume: uploadResumeService } = useApiServices();
 
   // Fetch applications from backend
   useEffect(() => {
@@ -424,7 +424,12 @@ export function ApplicationsTracker({ userId, jobId }: ApplicationsTrackerProps)
     setLoading(true);
     setError(null);
     try {
-      await applyForJob({ userId, jobId: jobId || '' });
+      await submitJobApplication({
+        user_id: userId,
+        job_id: jobId || '',
+        resume_id: "", // This needs to be dynamically set or fetched
+        application_url: jobUrl,
+      });
       // Refresh applications list
       const updatedApplications = await fetchApplications(parseInt(userId));
       setApplications(updatedApplications);
@@ -438,7 +443,7 @@ export function ApplicationsTracker({ userId, jobId }: ApplicationsTrackerProps)
     } finally {
       setLoading(false);
     }
-  }, [jobUrl, applyForJob, fetchApplications, userId, jobId]);
+  }, [jobUrl, submitJobApplication, fetchApplications, userId, jobId]);
 
   const handleAddApplication = useCallback(async (application: CreateApplicationData) => {
     try {
