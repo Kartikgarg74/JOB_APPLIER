@@ -25,7 +25,7 @@ import time
 
 from packages.database.config import SessionLocal
 from packages.database.models import User
-from packages.config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REDIS_URL, REDIS_TOKEN
+from packages.config.settings import settings
 from .schemas import UserCreate, UserLogin, UserResponse, GoogleAuthCallback
 from packages.utilities.email_utils import send_email
 import secrets
@@ -50,23 +50,12 @@ BLOCK_THRESHOLD = 5
 BLOCK_DURATION = 900  # 15 minutes
 
 # Redis connection for user activity tracking (adjust host/port as needed)
-redis_url_str = os.getenv("UPSTASH_REDIS_REST_URL", "redis://localhost:6379/0")
-redis_token = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
-
-# Parse the Redis URL
-from urllib.parse import urlparse
-parsed_url = urlparse(redis_url_str)
-redis_host = parsed_url.hostname
-redis_port = parsed_url.port if parsed_url.port else 6379
-redis_password = redis_token if redis_token else parsed_url.password
-
-redis_client = redis.Redis(
-    host=redis_host,
-    port=redis_port,
-    password=redis_password,
+redis_client = redis.from_url(
+    settings.REDIS_URL,
+    password=settings.REDIS_TOKEN,
     encoding="utf-8",
     decode_responses=True,
-    ssl=True
+    ssl=settings.REDIS_URL.startswith("rediss"),
 )
 dau_gauge = Gauge('active_users_daily', 'Number of unique users active today')
 wau_gauge = Gauge('active_users_weekly', 'Number of unique users active this week')
@@ -98,9 +87,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 
@@ -111,7 +100,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 # Example common password list (expand in production)
