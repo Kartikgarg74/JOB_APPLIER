@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
         password=settings.REDIS_TOKEN,
         encoding="utf-8",
         decode_responses=True,
-        ssl=settings.REDIS_URL.startswith("rediss"),
+
     )
     await FastAPILimiter.init(redis_instance)
     yield
