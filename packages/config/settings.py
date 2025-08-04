@@ -5,6 +5,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
 
 
+def get_redis_url():
+    url = os.getenv("UPSTASH_REDIS_REST_URL")
+    if url and url.startswith("redis://"):
+        return url
+    logging.warning("UPSTASH_REDIS_REST_URL not set or invalid, using default localhost Redis.")
+    return "redis://localhost:6379/0"
 
 
 class Settings(BaseSettings):
@@ -97,10 +103,3 @@ settings = Settings()
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
-
-def get_redis_url():
-    url = os.getenv("UPSTASH_REDIS_REST_URL")
-    if url and url.startswith("redis://"):
-        return url
-    logging.warning("UPSTASH_REDIS_REST_URL not set or invalid, using default localhost Redis.")
-    return "redis://localhost:6379/0"
