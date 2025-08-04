@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
 
 
+
+
 class Settings(BaseSettings):
     """
     [CONTEXT] Manages application settings using Pydantic Settings.
@@ -50,10 +52,17 @@ class Settings(BaseSettings):
     )
 
     CELERY_BROKER_URL: str = Field(
-        default=None, description="Celery broker URL"
+        default=get_redis_url(), description="Celery broker URL"
     )
     CELERY_RESULT_BACKEND: str = Field(
-        default=None, description="Celery result backend URL"
+        default=get_redis_url(), description="Celery result backend URL"
+    )
+
+    UPSTASH_REDIS_REST_URL: Optional[str] = Field(
+        default=None, description="Upstash Redis REST URL"
+    )
+    UPSTASH_REDIS_REST_TOKEN: Optional[str] = Field(
+        default=None, description="Upstash Redis REST Token"
     )
 
     MAILGUN_API_KEY: Optional[str] = Field(
@@ -89,16 +98,9 @@ SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
-
 def get_redis_url():
     url = os.getenv("UPSTASH_REDIS_REST_URL")
     if url and url.startswith("redis://"):
         return url
     logging.warning("UPSTASH_REDIS_REST_URL not set or invalid, using default localhost Redis.")
     return "redis://localhost:6379/0"
-
-REDIS_URL = get_redis_url()
-REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
-
-settings.CELERY_BROKER_URL = REDIS_URL
-settings.CELERY_RESULT_BACKEND = REDIS_URL
