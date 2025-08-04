@@ -50,10 +50,10 @@ class Settings(BaseSettings):
     )
 
     CELERY_BROKER_URL: str = Field(
-        default="redis://localhost:6379/0", description="Celery broker URL"
+        default=None, description="Celery broker URL"
     )
     CELERY_RESULT_BACKEND: str = Field(
-        default="redis://localhost:6379/0", description="Celery result backend URL"
+        default=None, description="Celery result backend URL"
     )
 
     MAILGUN_API_KEY: Optional[str] = Field(
@@ -99,3 +99,6 @@ def get_redis_url():
 
 REDIS_URL = get_redis_url()
 REDIS_TOKEN = os.getenv("UPSTASH_REDIS_REST_TOKEN", None)
+
+settings.CELERY_BROKER_URL = REDIS_URL
+settings.CELERY_RESULT_BACKEND = REDIS_URL
