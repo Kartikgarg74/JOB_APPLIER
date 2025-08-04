@@ -96,10 +96,13 @@ class Settings(BaseSettings):
         default=30, description="Access token expiration in minutes"
     )
 
+    REDIS_URL: str = Field(
+        default=get_redis_url(), description="Redis URL for general use"
+    )
+    REDIS_TOKEN: Optional[str] = Field(
+        default=os.getenv("UPSTASH_REDIS_REST_TOKEN", None), description="Redis authentication token"
+    )
+
 
 # Instantiate settings to be imported throughout the application
 settings = Settings()
-
-SECRET_KEY = settings.SECRET_KEY
-ALGORITHM = settings.ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES

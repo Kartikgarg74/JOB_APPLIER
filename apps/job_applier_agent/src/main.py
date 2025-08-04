@@ -19,7 +19,7 @@ from fastapi import Response as FastAPIResponse
 from contextlib import asynccontextmanager
 import redis.asyncio as redis
 from fastapi_limiter import FastAPILimiter
-from packages.config.settings import REDIS_URL, REDIS_TOKEN
+from packages.config.settings import settings
 
 from packages.utilities.logging_utils import setup_logging
 from apps.job_applier_agent.src.metrics import (
@@ -38,12 +38,12 @@ setup_logging()
 async def lifespan(app: FastAPI):
     global startup_time
     startup_time = time.time()
-    redis_instance = redis.Redis(
-        host="localhost",
-        port=6379,
+    redis_instance = redis.from_url(
+        settings.REDIS_URL,
+        password=settings.REDIS_TOKEN,
         encoding="utf-8",
         decode_responses=True,
-        ssl=False
+        ssl=settings.REDIS_URL.startswith("rediss"),
     )
     await FastAPILimiter.init(redis_instance)
     yield
