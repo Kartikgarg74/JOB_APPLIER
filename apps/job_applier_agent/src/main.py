@@ -38,13 +38,17 @@ setup_logging()
 async def lifespan(app: FastAPI):
     global startup_time
     startup_time = time.time()
-    redis_instance = redis.from_url(
-        settings.REDIS_URL,
-        password=settings.REDIS_TOKEN,
-        encoding="utf-8",
-        decode_responses=True,
-
-    )
+    redis_kwargs = {
+        "url": settings.REDIS_URL,
+        "encoding": "utf-8",
+        "decode_responses": True,
+    }
+    if settings.REDIS_TOKEN:
+        redis_kwargs["password"] = settings.REDIS_TOKEN
+    # Assuming Upstash Redis always requires SSL, even with redis:// scheme
+    if "upstash.io" in settings.REDIS_URL:
+        redis_kwargs["ssl"] = True
+    redis_instance = redis.from_url(**redis_kwargs)
     await FastAPILimiter.init(redis_instance)
     yield
 
