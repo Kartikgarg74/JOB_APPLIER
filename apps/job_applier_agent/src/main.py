@@ -7,6 +7,7 @@ load_dotenv()
 import logging
 import time
 import json
+from urllib.parse import urlparse
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -40,24 +41,20 @@ setup_logging()
 async def lifespan(app: FastAPI):
     global startup_time
     startup_time = time.time()
-    redis_kwargs = {
-        "url": settings.REDIS_URL,
-        "encoding": "utf-8",
-        "decode_responses": True,
-     }
+    parsed_url = urlparse(settings.REDIS_URL)
+    redis_host = parsed_url.hostname
+    redis_port = parsed_url.port
+    redis_password = settings.REDIS_TOKEN if settings.REDIS_TOKEN else parsed_url.password
+    redis_ssl = True if parsed_url.scheme == "rediss" else False
 
-    
-
-    
-
-
-    if settings.REDIS_URL.startswith("rediss://"):
-        redis_kwargs["ssl"] = True
-
-    if settings.REDIS_TOKEN:
-        redis_kwargs["password"] = settings.REDIS_TOKEN
-
-    redis_instance = redis.from_url(**redis_kwargs)
+    redis_instance = redis.Redis(
+        host=redis_host,
+        port=redis_port,
+        password=redis_password,
+        ssl=redis_ssl,
+        encoding="utf-8",
+        decode_responses=True
+    )
     await FastAPILimiter.init(redis_instance)
     yield
 
