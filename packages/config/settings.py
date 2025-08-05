@@ -3,12 +3,19 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import logging
+from urllib.parse import urlparse, urlunparse
 
 
 def get_redis_url():
     url = os.getenv("UPSTASH_REDIS_REST_URL")
-    if url and (url.startswith("redis://") or url.startswith("rediss://")):
-        return url
+    if url:
+        parsed_url = urlparse(url)
+        if "upstash.io" in parsed_url.hostname and parsed_url.scheme == "redis":
+            # Force rediss:// scheme for Upstash Redis
+            parsed_url = parsed_url._replace(scheme="rediss")
+            return urlunparse(parsed_url)
+        elif parsed_url.scheme in ("redis", "rediss"):
+            return url
     logging.warning("UPSTASH_REDIS_REST_URL not set or invalid, using default localhost Redis.")
     return "redis://localhost:6379/0"
 

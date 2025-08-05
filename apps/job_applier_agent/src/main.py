@@ -44,17 +44,20 @@ async def lifespan(app: FastAPI):
     startup_time = time.time()
     parsed_url = urlparse(settings.REDIS_URL)
     redis_host = parsed_url.hostname
-    redis_port = parsed_url.port
-    redis_password = settings.REDIS_TOKEN
-    redis_ssl = True if parsed_url.scheme == "rediss" else False
+    redis_port = parsed_url.port if parsed_url.port else 6379 # Default to 6379 if port is not in URL
+    redis_password = settings.REDIS_TOKEN if settings.REDIS_TOKEN else parsed_url.password
 
-    logging.info(f"Connecting to Redis with: URL={settings.REDIS_URL}, Host={redis_host}, Port={redis_port}, SSL={redis_ssl}, Password_Provided={bool(redis_password)}")
+    # Force SSL if connecting to Upstash, as their Redis instances typically require it
+    # Force SSL if connecting to Upstash, as their Redis instances typically require it
+    redis_ssl_final = True if "upstash.io" in redis_host else (True if parsed_url.scheme == "rediss" else False)
+
+    logging.info(f"Connecting to Redis with: URL={settings.REDIS_URL}, Host={redis_host}, Port={redis_port}, SSL={redis_ssl_final}, Password_Provided={bool(redis_password)}")
 
     redis_instance = redis.Redis(
         host=redis_host,
         port=redis_port,
         password=redis_password,
-        ssl=redis_ssl,
+        ssl=redis_ssl_final,
         encoding="utf-8",
         decode_responses=True
     )
