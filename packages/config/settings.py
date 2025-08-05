@@ -7,7 +7,7 @@ import logging
 
 def get_redis_url():
     url = os.getenv("UPSTASH_REDIS_REST_URL")
-    if url and url.startswith("redis://"):
+    if url and (url.startswith("redis://") or url.startswith("rediss://")):
         return url
     logging.warning("UPSTASH_REDIS_REST_URL not set or invalid, using default localhost Redis.")
     return "redis://localhost:6379/0"

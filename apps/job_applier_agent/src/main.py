@@ -7,6 +7,7 @@ load_dotenv()
 import logging
 import time
 import json
+import logging
 from urllib.parse import urlparse
 
 from fastapi import FastAPI
@@ -44,8 +45,10 @@ async def lifespan(app: FastAPI):
     parsed_url = urlparse(settings.REDIS_URL)
     redis_host = parsed_url.hostname
     redis_port = parsed_url.port
-    redis_password = settings.REDIS_TOKEN if settings.REDIS_TOKEN else parsed_url.password
+    redis_password = settings.REDIS_TOKEN
     redis_ssl = True if parsed_url.scheme == "rediss" else False
+
+    logging.info(f"Connecting to Redis with: URL={settings.REDIS_URL}, Host={redis_host}, Port={redis_port}, SSL={redis_ssl}, Password_Provided={bool(redis_password)}")
 
     redis_instance = redis.Redis(
         host=redis_host,
