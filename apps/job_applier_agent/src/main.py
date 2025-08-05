@@ -50,8 +50,13 @@ async def lifespan(app: FastAPI):
 
     
 
+
+    if settings.REDIS_URL.startswith("rediss://"):
+        redis_kwargs["ssl"] = True
+
     if settings.REDIS_TOKEN:
         redis_kwargs["password"] = settings.REDIS_TOKEN
+
     redis_instance = redis.from_url(**redis_kwargs)
     await FastAPILimiter.init(redis_instance)
     yield
