@@ -21,6 +21,8 @@ import redis.asyncio as redis
 from fastapi_limiter import FastAPILimiter
 from packages.config.settings import settings
 
+
+
 from packages.utilities.logging_utils import setup_logging
 from apps.job_applier_agent.src.metrics import (
     signup_counter, login_counter, job_apply_counter, profile_update_counter,
@@ -42,12 +44,14 @@ async def lifespan(app: FastAPI):
         "url": settings.REDIS_URL,
         "encoding": "utf-8",
         "decode_responses": True,
-    }
+     }
+
+    
+
+    
+
     if settings.REDIS_TOKEN:
         redis_kwargs["password"] = settings.REDIS_TOKEN
-    # Assuming Upstash Redis always requires SSL, even with redis:// scheme
-    if "upstash.io" in settings.REDIS_URL:
-        redis_kwargs["ssl"] = True
     redis_instance = redis.from_url(**redis_kwargs)
     await FastAPILimiter.init(redis_instance)
     yield
