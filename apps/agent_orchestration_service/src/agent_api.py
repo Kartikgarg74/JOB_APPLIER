@@ -5,7 +5,7 @@ from packages.database.config import SessionLocal
 from packages.agents.agent_manager import AgentManager
 from pydantic import BaseModel
 from typing import Dict, Any, Generator
-from frontend.lib.applications import ApplicationSubmissionResponse
+from packages.schemas.applications import ApplicationSubmissionResponse
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer
 from packages.database.models import User
