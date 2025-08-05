@@ -101,6 +101,16 @@ class PerformanceLoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(PerformanceLoggingMiddleware)
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://job-applier-frontend.onrender.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Prometheus metrics
 

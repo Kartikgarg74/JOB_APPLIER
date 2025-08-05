@@ -22,10 +22,20 @@ async def lifespan(app: FastAPI):
     startup_time = time.time()
     yield
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Job Scraper Service",
     description="Microservice for scraping job postings from various platforms.",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://job-applier-frontend.onrender.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/metrics")

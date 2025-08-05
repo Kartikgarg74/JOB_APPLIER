@@ -22,10 +22,20 @@ async def lifespan(app: FastAPI):
     startup_time = time.time()
     yield
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Resume Parser Service",
     description="Microservice for parsing resumes into structured JSON",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://job-applier-frontend.onrender.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 logger = logging.getLogger(__name__)

@@ -27,11 +27,21 @@ async def lifespan(app: FastAPI):
     startup_time = time.time()
     yield
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="Job Matcher API",
     description="API for matching job descriptions to candidate profiles.",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://job-applier-frontend.onrender.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
