@@ -86,7 +86,7 @@ export function LoginPage() {
             <CardHeader className="text-center pb-8">
               <div className="flex justify-center mb-4">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-                  <Zap className="w-7 h-7 text-white" />
+<Zap className="w-7 h-7 text-white" />
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
@@ -98,7 +98,7 @@ export function LoginPage() {
                 <Alert variant="destructive" className="mb-4" role="alert" aria-live="assertive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    <div className="flex justify-between items-center">
+ <div className="flex justify-between items-center">
                       <span>{error}</span>
                       <button onClick={() => setError("")} className="ml-4 text-lg font-bold focus:outline-none" aria-label="Dismiss error">&times;</button>
                     </div>
@@ -167,9 +167,7 @@ export function LoginPage() {
                       Remember me
                     </label>
                   </div>
-                  <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                    Forgot password?
-                  </Link>
+
                 </div>
 
                 <Button
@@ -212,14 +210,7 @@ export function LoginPage() {
               </div>
 
               <div className="text-center text-sm text-muted-foreground">
-                By signing in, you agree to our{" "}
-                <Link href="/terms" className="text-primary hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-primary hover:underline">
-                  Privacy Policy
-                </Link>
+                By signing in, you agree to our Terms of Service and Privacy Policy.
               </div>
             </CardContent>
           </Card>
