@@ -162,6 +162,7 @@ export function Dashboard() {
 
   return (
     <ErrorBoundary>
+      <div className="flex flex-col min-h-screen">
       <main role="main" aria-label="Dashboard" tabIndex={-1} className="space-y-8 px-2 sm:px-4 md:px-0 focus:outline-none">
         {/* Welcome Section */}
         <div className="gradient-bg rounded-2xl p-4 sm:p-8 text-white">
@@ -189,7 +190,7 @@ export function Dashboard() {
                   <div className="text-2xl sm:text-3xl font-bold mb-1">{stat.value}</div>
                   <p className="text-xs sm:text-sm text-muted-foreground">{stat.change}</p>
                 </CardContent>
-              </Card>
+          </Card>
             )
           })}
         </div>
@@ -244,7 +245,8 @@ export function Dashboard() {
             <Button variant="outline" className="w-full mt-4">
               View All Applications
             </Button>
-          </Card>
+            </CardContent>
+            </Card>
 
           {/* Job Match Score Distribution (Placeholder for a chart) */}
           <Card aria-label="Job match score distribution">
@@ -293,60 +295,7 @@ export function Dashboard() {
           <p>Your central hub for job application management.</p>
         </div>
       </main>
-    </ErrorBoundary>
-  );
-}
-
-            </CardContent>
-          </Card>
-
-          {/* Job Match Score Distribution (Placeholder for a chart) */}
-          <Card aria-label="Job match score distribution">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Job Match Score Distribution
-              </CardTitle>
-              <CardDescription>Overview of your job application match scores</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center items-center h-48">
-              {/* This is where a chart component (e.g., from Tremor or Recharts) would go */}
-              <p className="text-muted-foreground">Chart coming soon...</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card aria-label="Quick actions">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Quick Actions
-            </CardTitle>
-            <CardDescription>Perform common tasks quickly</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" onClick={() => handleQuickAction("New Application")}>
-              <Upload className="mr-2 h-4 w-4" /> New Application
-            </Button>
-            <Button variant="outline" onClick={() => handleQuickAction("Search Jobs")}>
-              <Search className="mr-2 h-4 w-4" /> Search Jobs
-            </Button>
-            <Button variant="outline" onClick={() => handleQuickAction("Update Profile")}>
-              <Avatar className="mr-2 h-4 w-4" /> Update Profile
-            </Button>
-            <Button variant="outline" onClick={() => handleQuickAction("View Analytics")}>
-              <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="border-t border-gray-200 pt-8 text-center text-gray-500 text-sm mt-12">
-          <p>&copy; 2024 Job Applier. All rights reserved.</p>
-          <p>Your central hub for job application management.</p>
-        </div>
-      </main>
+      </div>
     </ErrorBoundary>
   );
 }
