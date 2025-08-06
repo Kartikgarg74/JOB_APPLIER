@@ -7,7 +7,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; connect-src 'self' https://api.pwnedpasswords.com https://accounts.google.com;"
+            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob:; connect-src 'self' https://api.pwnedpasswords.com https://accounts.google.com https://gbmkiycdhysljzmvrenm.supabase.co;"
           },
         ],
       },
