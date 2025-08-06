@@ -50,6 +50,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           npm install
+          npm test
       - name: Run Jest tests with coverage
         run: |
           npm run test -- --coverage
