@@ -9,7 +9,7 @@ export default function CallbackPage() {
     // This page is primarily for handling the redirect from Supabase OAuth.
     // The actual session exchange happens in the API route.
     // We can redirect to the dashboard or a loading state here.
-    router.push('/');
+    router.push('/dashboard');
   }, [router]);
 
   return (
