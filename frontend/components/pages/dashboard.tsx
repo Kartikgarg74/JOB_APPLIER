@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress"
 import { Search, Upload, Clock, TrendingUp, Target, CheckCircle, Building2, Calendar, BarChart3 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import React, { useState, useEffect } from "react";
+import useSWR from 'swr';
+import { supabase } from '@/lib/supabase';
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -35,73 +37,89 @@ class ErrorBoundaryInner extends React.Component<{ setError: (e: Error) => void;
   }
 }
 
-const stats = [
-  {
-    title: "Jobs Applied",
-    value: "47",
-    change: "+12 this week",
-    icon: Target,
-    color: "text-blue-600",
-  },
-  {
-    title: "Success Rate",
-    value: "23%",
-    change: "+5% from last month",
-    icon: TrendingUp,
-    color: "text-green-600",
-  },
-  {
-    title: "ATS Average Score",
-    value: "87",
-    change: "+3 points",
-    icon: BarChart3,
-    color: "text-purple-600",
-  },
-  {
-    title: "Interviews Scheduled",
-    value: "8",
-    change: "+2 this week",
-    icon: Calendar,
-    color: "text-orange-600",
-  },
-]
+const fetcher = async (url: string) => {
+  const { data, error } = await supabase.from('job_applications').select('*');
+  if (error) throw error;
+  return data;
+};
 
-const recentApplications = [
-  {
-    company: "Google",
-    position: "Senior Frontend Developer",
-    appliedDate: "2 days ago",
-    status: "Interview",
-    logo: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    company: "Microsoft",
-    position: "Full Stack Engineer",
-    appliedDate: "5 days ago",
-    status: "Applied",
-    logo: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    company: "Netflix",
-    position: "React Developer",
-    appliedDate: "1 week ago",
-    status: "Shortlisted",
-    logo: "/placeholder.svg?height=40&width=40",
-  },
-]
+// Helper to calculate job match score
+const calculateJobMatchScore = (application: any) => {
+  const { job_description, resume_content } = application;
+  if (!job_description || !resume_content) return 0;
+
+  // Simple keyword matching for demo purposes
+  const jobKeywords = job_description.toLowerCase().split(/\W+/);
+  const resumeKeywords = resume_content.toLowerCase().split(/\W+/);
+
+  let matchCount = 0;
+  jobKeywords.forEach((keyword: string) => {
+    if (resumeKeywords.includes(keyword)) {
+      matchCount++;
+    }
+  });
+
+  return Math.min(100, Math.round((matchCount / jobKeywords.length) * 100));
+};
+
+// Helper to calculate ATS score (placeholder)
+const calculateAtsScore = (application: any) => {
+  // In a real application, this would involve more complex NLP or an external ATS API
+  // For now, let's return a random score to simulate variability
+  return Math.floor(Math.random() * (95 - 70 + 1)) + 70;
+};
 
 export function Dashboard() {
-  // Simulate async data loading and error for demo
+  const { data: applications, error, isLoading } = useSWR('job_applications', fetcher);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
+    if (!isLoading) {
       setLoading(false);
-      // setError("Failed to load dashboard data."); // Uncomment to test error UI
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  }, [isLoading]);
+
+  const stats = applications ? [
+    {
+      title: "Jobs Applied",
+      value: applications.length.toString(),
+      change: "", // Dynamic change calculation can be added here
+      icon: Target,
+      color: "text-blue-600",
+    },
+    {
+      title: "Success Rate",
+      value: `${((applications.filter((app: any) => app.status === 'Interview' || app.status === 'Offer').length / applications.length) * 100 || 0).toFixed(0)}%`,
+      change: "",
+      icon: TrendingUp,
+      color: "text-green-600",
+    },
+    {
+      title: "ATS Average Score",
+      value: `${(applications.reduce((sum: number, app: any) => sum + calculateAtsScore(app), 0) / applications.length || 0).toFixed(0)}`,
+      change: "",
+      icon: BarChart3,
+      color: "text-purple-600",
+    },
+    {
+      title: "Interviews Scheduled",
+      value: applications.filter((app: any) => app.status === 'Interview').length.toString(),
+      change: "",
+      icon: Calendar,
+      color: "text-orange-600",
+    },
+  ] : [];
+
+  const recentApplications = applications ? applications.slice(0, 3).map((app: any) => ({
+    company: app.company_name,
+    position: app.job_title,
+    appliedDate: new Date(app.created_at).toLocaleDateString(), // Format date as needed
+    status: app.status,
+    logo: app.company_logo_url || "/placeholder.svg?height=40&width=40",
+    jobMatchScore: calculateJobMatchScore(app),
+    atsScore: calculateAtsScore(app),
+    coverLetterPreview: app.cover_letter_content ? app.cover_letter_content.substring(0, 50) + '...' : 'No cover letter',
+  })) : [];
 
   // Analytics event hooks
   const handleQuickAction = (action: string) => {
@@ -116,8 +134,7 @@ export function Dashboard() {
       <Alert variant="destructive" className="mb-4" role="alert" aria-live="assertive">
         <AlertDescription>
           <div className="flex justify-between items-center">
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-4 text-lg font-bold focus:outline-none" aria-label="Dismiss error">&times;</button>
+            <span>Failed to load dashboard data: {error.message}</span>
           </div>
         </AlertDescription>
       </Alert>
@@ -197,91 +214,139 @@ export function Dashboard() {
                         <Building2 className="w-6 h-6" />
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <h4 className="font-semibold text-base sm:text-lg">{app.position}</h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground">{app.company}</p>
-                      <p className="text-xs text-muted-foreground">{app.appliedDate}</p>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-base sm:text-lg">{app.position}</h3>
+                      <p className="text-sm text-muted-foreground">{app.company} &bull; {app.appliedDate}</p>
                     </div>
                   </div>
-                  <Badge
-                    variant={
-                      app.status === "Interview" ? "default" : app.status === "Shortlisted" ? "secondary" : "outline"
-                    }
-                    className={
-                      app.status === "Interview"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                        : app.status === "Shortlisted"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-                    }
-                  >
-                    {app.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1 sm:gap-2">
+                    <Badge variant="outline" className={`px-3 py-1 rounded-full text-xs sm:text-sm ${app.status === 'Interview' ? 'bg-blue-100 text-blue-800' : app.status === 'Offer' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {app.status}
+                    </Badge>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="font-medium">Job Match: {app.jobMatchScore}%</span>
+                      <Progress value={app.jobMatchScore} className="w-20 h-2" />
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="font-medium">ATS Score: {app.atsScore}%</span>
+                      <Progress value={app.atsScore} className="w-20 h-2" />
+                    </div>
+                  </div>
+                  <div className="w-full text-sm text-muted-foreground mt-2 sm:mt-0">
+                    <p className="font-medium">Cover Letter Preview:</p>
+                    <p className="line-clamp-2">{app.coverLetterPreview}</p>
+                  </div>
                 </div>
               ))}
-            </CardContent>
+            {recentApplications.length === 0 && !loading && (
+              <p className="text-center text-muted-foreground">No recent applications found.</p>
+            )}
+            <Button variant="outline" className="w-full mt-4">
+              View All Applications
+            </Button>
           </Card>
 
-          {/* Quick Actions */}
-          <Card aria-label="Quick actions">
+          {/* Job Match Score Distribution (Placeholder for a chart) */}
+          <Card aria-label="Job match score distribution">
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Jump into your most used features</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Job Match Score Distribution
+              </CardTitle>
+              <CardDescription>Overview of your job application match scores</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start bg-transparent text-base sm:text-lg" variant="outline" onClick={() => handleQuickAction('Find New Jobs')}>
-                <Search className="w-4 h-4 mr-2" />
-                Find New Jobs
-              </Button>
-              <Button className="w-full justify-start bg-transparent text-base sm:text-lg" variant="outline" onClick={() => handleQuickAction('Upload Resume')}>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Resume
-              </Button>
-              <Button className="w-full justify-start bg-transparent text-base sm:text-lg" variant="outline" onClick={() => handleQuickAction('Check ATS Score')}>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Check ATS Score
-              </Button>
-              <Button className="w-full justify-start bg-transparent text-base sm:text-lg" variant="outline" onClick={() => handleQuickAction('View Applications')}>
-                <Clock className="w-4 h-4 mr-2" />
-                View Applications
-              </Button>
+            <CardContent className="flex justify-center items-center h-48">
+              {/* This is where a chart component (e.g., from Tremor or Recharts) would go */}
+              <p className="text-muted-foreground">Chart coming soon...</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Progress Section */}
-        <Card aria-label="Weekly progress">
+        {/* Quick Actions */}
+        <Card aria-label="Quick actions">
           <CardHeader>
-            <CardTitle>Weekly Progress</CardTitle>
-            <CardDescription>You're doing great! Keep up the momentum.</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>Perform common tasks quickly</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Applications Goal</span>
-                  <span>12/15</span>
-                </div>
-                <Progress value={80} className="h-2" />
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Resume Updates</span>
-                  <span>3/5</span>
-                </div>
-                <Progress value={60} className="h-2" />
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Interview Prep</span>
-                  <span>2/3</span>
-                </div>
-                <Progress value={67} className="h-2" />
-              </div>
-            </div>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button variant="outline" onClick={() => handleQuickAction("New Application")}>
+              <Upload className="mr-2 h-4 w-4" /> New Application
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("Search Jobs")}>
+              <Search className="mr-2 h-4 w-4" /> Search Jobs
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("Update Profile")}>
+              <Avatar className="mr-2 h-4 w-4" /> Update Profile
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("View Analytics")}>
+              <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+            </Button>
           </CardContent>
         </Card>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 pt-8 text-center text-gray-500 text-sm mt-12">
+          <p>&copy; 2024 Job Applier. All rights reserved.</p>
+          <p>Your central hub for job application management.</p>
+        </div>
       </main>
     </ErrorBoundary>
-  )
+  );
+}
+
+            </CardContent>
+          </Card>
+
+          {/* Job Match Score Distribution (Placeholder for a chart) */}
+          <Card aria-label="Job match score distribution">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Job Match Score Distribution
+              </CardTitle>
+              <CardDescription>Overview of your job application match scores</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center h-48">
+              {/* This is where a chart component (e.g., from Tremor or Recharts) would go */}
+              <p className="text-muted-foreground">Chart coming soon...</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions */}
+        <Card aria-label="Quick actions">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              Quick Actions
+            </CardTitle>
+            <CardDescription>Perform common tasks quickly</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button variant="outline" onClick={() => handleQuickAction("New Application")}>
+              <Upload className="mr-2 h-4 w-4" /> New Application
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("Search Jobs")}>
+              <Search className="mr-2 h-4 w-4" /> Search Jobs
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("Update Profile")}>
+              <Avatar className="mr-2 h-4 w-4" /> Update Profile
+            </Button>
+            <Button variant="outline" onClick={() => handleQuickAction("View Analytics")}>
+              <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 pt-8 text-center text-gray-500 text-sm mt-12">
+          <p>&copy; 2024 Job Applier. All rights reserved.</p>
+          <p>Your central hub for job application management.</p>
+        </div>
+      </main>
+    </ErrorBoundary>
+  );
 }
