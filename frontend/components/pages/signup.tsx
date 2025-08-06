@@ -26,6 +26,7 @@ import {
 import { useTheme } from "next-themes"
 import { useApiServices } from '@/lib/api-context';
 import { supabase } from '@/lib/supabase';
+import { pwnedPassword } from 'hibp';
 import { ResumeUpload } from '@/components/resume-upload';
 
 
@@ -79,7 +80,7 @@ export function SignupPage() {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleStep1Submit = (e: React.FormEvent) => {
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
@@ -89,8 +90,28 @@ export function SignupPage() {
       setError("Password must be at least 8 characters long")
       return
     }
+
+    const isPasswordSafe = await checkPassword(formData.password);
+    if (!isPasswordSafe) {
+      return;
+    }
     setStep(2)
   }
+
+  const checkPassword = async (password: string) => {
+    try {
+      const count = await pwnedPassword(password);
+      if (count > 0) {
+        setError(`This password has been exposed in a data breach ${count} times. Please choose another one.`);
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      console.error("Error checking pwned password:", err);
+      setError("Could not check password against known breaches. Please try again.");
+      return false;
+    }
+  };
 
   const handleFinalSubmit = async () => {
     setIsLoading(true)

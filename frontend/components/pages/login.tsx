@@ -41,7 +41,7 @@ export function LoginPage() {
       setError(error.message)
     } else {
       // Handle successful login, e.g., redirect to dashboard
-      window.location.href = "/"
+      window.location.href = "/dashboard"
     }
     setIsLoading(false)
   }
