@@ -36,6 +36,11 @@ const nextConfig = {
       {
         source: "/api/:path*",
         destination: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL ? `${process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL}/:path*` : "http://localhost:8000/:path*",
+      },
+      {
+        source: "/api/job-applications",
+        destination: "/api/job-applications",
+
 
       },
     ];

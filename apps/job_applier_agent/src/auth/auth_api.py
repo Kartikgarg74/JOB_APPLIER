@@ -317,8 +317,8 @@ def disable_2fa(user_id: int, db: Session = Depends(get_db)):
 @router.post("/login", response_model=UserResponse, dependencies=[Depends(RateLimiter(times=5, seconds=10))])
 async def login_user(user: UserLogin, response: Response, db: Session = Depends(get_db), two_fa_code: str = None, request: Request = None):
     ip = get_client_ip(request)
-    # if ip in BLOCKED_IPS and BLOCKED_IPS[ip] > time.time():
-    #     raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
+    if ip in BLOCKED_IPS and BLOCKED_IPS[ip] > time.time():
+        raise HTTPException(status_code=429, detail="Too many failed attempts. Try again later.")
     logger.info(f"Attempting to log in user: {user.username}")
     db_user = db.query(User).filter(User.username == user.username).first()
     try:
@@ -449,12 +449,14 @@ async def google_auth_callback(data: GoogleAuthCallback, db: Session = Depends(g
     # [CONTEXT] Handle Google OAuth callback, verify token, and manage user
     logger.info("Attempting Google OAuth authentication.")
     try:
-        # Verify the ID token
-        idinfo = id_token.verify_oauth2_token(
-            data.id_token, requests.Request(), GOOGLE_CLIENT_ID
-        )
+        # Verify the ID tokenfrom tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
-        # Extract user information
+        @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(requests.exceptions.RequestException))
+        def verify_google_token_with_retry(id_token_str, request_obj, client_id):
+            return id_token.verify_oauth2_token(id_token_str, request_obj, client_id)
+
+        try:
+            idinfo = verify_google_token_with_retry(data.id_token, requests.Request(), GOOGLE_CLIENT_ID)   # Extract user information
         google_id = idinfo["sub"]
         email = idinfo["email"]
         name = idinfo.get("name", email.split("@")[0])

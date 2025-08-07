@@ -41,6 +41,7 @@ class User(Base):
     # Onboarding state
     onboarding_complete = Column(Boolean, default=False)
     onboarding_step = Column(String(50), nullable=True)
+    profile_completeness = Column(Integer, default=0) # New field for profile completeness
 
     # Hybrid properties for transparent encryption/decryption
     @hybrid_property

@@ -1,21 +1,25 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response as FastAPIResponse
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST, Gauge, Histogram
-from fastapi import Response as FastAPIResponse
 from contextlib import asynccontextmanager
 import logging
 import time
 import json
 from dotenv import load_dotenv
+from redis.asyncio import Redis
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
 
 load_dotenv()
 
 from packages.errors.custom_exceptions import JobApplierException
 from packages.utilities.logging_utils import setup_logging
+
+limiter = RateLimiter(times=10, seconds=1)
 
 from .user_api import router as user_router
 from .profile_api import router as profile_router
@@ -37,7 +41,13 @@ request_latency = Histogram('user_request_latency_seconds', 'API request latency
 async def lifespan(app: FastAPI):
     global startup_time
     startup_time = time.time()
+    redis_connection = Redis(host="localhost", port=6379, db=0, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_connection)
     yield
+    await FastAPILimiter.close()
+
+
+app = FastAPI(
 
 app = FastAPI(
     title="User Service API",

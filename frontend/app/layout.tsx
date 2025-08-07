@@ -54,6 +54,66 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning={true}>
         <ApiProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+            <a
+              href="/dashboard"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Dashboard
+            </a>
+            <a
+              href="/jobs-search"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Job Search
+            </a>
+            <a
+              href="/applications"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Applications
+            </a>
+            <a
+              href="/ats-checker"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              ATS Checker
+            </a>
+            <a
+              href="/job-matcher"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Job Matcher
+            </a>
+            <a
+              href="/resume-parser"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Resume Parser
+            </a>
+            <a
+              href="/resume-editor"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Resume Editor
+            </a>
+            <a
+              href="/resume-upload"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Resume Upload
+            </a>
+            <a
+              href="/settings"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              Settings
+            </a>
+            <a
+              href="/about"
+              className="flex items-center space-x-3 rounded-lg px-3 py-2 text-slate-900 transition-all hover:text-slate-900"
+            >
+              About
+            </a>
             {children}
             <Toaster />
           </ThemeProvider>

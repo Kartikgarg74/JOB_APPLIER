@@ -14,6 +14,8 @@ from packages.config.settings import settings
 from packages.errors.custom_exceptions import JobApplierException
 from apps.job_applier_agent.src.main import job_apply_counter
 import google.generativeai as genai
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+import google.api_core.exceptions
 import json
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -200,7 +202,10 @@ async def generate_cover_letter_endpoint(
         HTTPException: If an error occurs during cover letter generation.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(google.api_core.exceptions.GoogleAPIError))
+        def get_gemini_model():
+            return genai.GenerativeModel('gemini-1.5-flash')
+        model = get_gemini_model()
 
         
         prompt = f"""
@@ -267,7 +272,10 @@ async def generate_cover_letter_endpoint(
         {request.user_preferences}
         """
         
-        response = model.generate_content(prompt)
+        @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(google.api_core.exceptions.GoogleAPIError))
+            def generate_content_with_retry(model_obj, prompt_str):
+                return model_obj.generate_content(prompt_str)
+            response = generate_content_with_retry(model, prompt)
         
         # Assuming the response is directly the JSON string
         generated_content = response.text

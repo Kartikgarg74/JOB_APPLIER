@@ -1,9 +1,10 @@
 from datetime import datetime
-from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import logging
+import os
+import shutil
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,12 +12,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from packages.errors.custom_exceptions import JobApplierException, NotificationError
 
 from apps.job_applier_agent.src.auth.auth_api import get_current_user
+from apps.user_service.src.main import limiter
 from packages.database.config import SessionLocal
 from packages.database.models import User, Education, Experience, Project, JobPreference, Skill
 from packages.notifications.notification_service import NotificationService
 from packages.database.config import get_db
 from packages.database.user_data_model import log_audit
 from apps.job_applier_agent.src.main import profile_update_counter
+from .resume_parser import ResumeParser, ParsedResume
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +53,410 @@ class SkillResponse(SkillCreate):
 
     class Config:
         from_attributes = True
-    technologies: Optional[str] = Field(
+
+
+class ResumeUploadResponse(BaseModel):
+    message: str
+    profile_completeness: float
+    parsed_data: ParsedResume
+
+
+class UserProfileUpdate(BaseModel):
+    phone: Optional[str] = Field(None, max_length=20)
+    address: Optional[str] = Field(None, max_length=255)
+    portfolio_url: Optional[str] = Field(None, max_length=255)
+    personal_website: Optional[str] = Field(None, max_length=255)
+    linkedin_profile: Optional[str] = Field(None, max_length=255)
+    github_profile: Optional[str] = Field(None, max_length=255)
+    years_of_experience: Optional[int] = Field(None, ge=0, le=100)
+    skills: Optional[List[SkillResponse]] = None  # Now a list of SkillResponse objects
+    onboarding_complete: Optional[bool] = Field(None, description="Has the user completed onboarding?")
+    onboarding_step: Optional[str] = Field(None, description="Current onboarding step or progress.")
+    job_preferences: Optional[dict] = Field(None, description="Job preferences for the user.")
+    profile_completeness: Optional[float] = Field(None, ge=0, le=100, description="Percentage of profile completeness")
+
+    class Config:
+        from_attributes = True
+
+
+class EducationCreate(BaseModel):
+    degree: str = Field(..., min_length=1, max_length=100)
+    university: str = Field(..., min_length=1, max_length=100)
+    field_of_study: str = Field(..., min_length=1, max_length=100)
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class EducationResponse(EducationCreate):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class EducationUpdate(BaseModel):
+    degree: Optional[str] = Field(None, min_length=1, max_length=100)
+    university: Optional[str] = Field(None, min_length=1, max_length=100)
+    field_of_study: Optional[str] = Field(None, min_length=1, max_length=100)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class ExperienceCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=100)
+    company: str = Field(..., min_length=1, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class ExperienceResponse(ExperienceCreate):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class ExperienceUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=100)
+    company: Optional[str] = Field(None, min_length=1, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class ProjectCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class ProjectResponse(ProjectCreate):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=1000)
+    technologies: Optional[str] = Field(None, max_length=500)
+    url: Optional[str] = Field(None, max_length=255)
+
+
+class JobPreferenceCreate(BaseModel):
+    company_size: Optional[str] = Field(None, max_length=50)
+    industry: Optional[str] = Field(None, max_length=100)
+    job_titles: Optional[str] = Field(
         None, max_length=500
     )  # Consider a List[str] and handle serialization
-    url: Optional[str] = Field(None, max_length=255)
+    locations: Optional[str] = Field(
+        None, max_length=500
+    )  # Consider a List[str] and handle serialization
+    remote: Optional[bool] = False
+    job_type: Optional[str] = Field(None, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+    notifications: Optional[bool] = True
+
+
+class JobPreferenceResponse(JobPreferenceCreate):
+    id: int
+    user_id: int
+
+
+class JobPreferenceUpdate(BaseModel):
+    company_size: Optional[str] = Field(None, max_length=50)
+    industry: Optional[str] = Field(None, max_length=100)
+    job_titles: Optional[str] = Field(None, max_length=500)
+    locations: Optional[str] = Field(None, max_length=500)
+    remote: Optional[bool] = None
+    job_type: Optional[str] = Field(None, max_length=100)
+    location: Optional[str] = Field(None, max_length=100)
+    notifications: Optional[bool] = None
+
+    class Config:
+        from_attributes = True
+
+
+def calculate_profile_completeness(user: User) -> float:
+    score = 0
+    total_fields = 10  # Base fields for calculation
+
+    if user.phone: score += 1
+    if user.address: score += 1
+    if user.portfolio_url: score += 1
+    if user.linkedin_profile: score += 1
+    if user.github_profile: score += 1
+    if user.years_of_experience is not None: score += 1
+    if user.skills: score += 1
+    if user.education: score += 1
+    if user.experience: score += 1
+    if user.job_preferences: score += 1
+
+    return (score / total_fields) * 100
+
+
+# User Profile Endpoints
+@router.get("/profile", response_model=UserProfileUpdate, dependencies=[Depends(limiter)])
+async def get_user_profile(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    """Retrieve the current user's profile information.
+
+    This endpoint fetches the detailed profile information for the authenticated user.
+
+    Args:
+        db (Session): Database session dependency.
+        current_user (User): The authenticated user object.
+
+    Returns:
+        UserProfileUpdate: The user's profile data.
+
+    Raises:
+        HTTPException: If the user profile is not found.
+    """
+    logger.info(f"Fetching profile for user ID: {current_user.id}")
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Calculate profile completeness
+    user.profile_completeness = calculate_profile_completeness(user)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+@router.put("/profile", response_model=UserProfileUpdate, dependencies=[Depends(limiter)])
+async def update_user_profile(
+    profile_update: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    notification_service: NotificationService = Depends(get_notification_service),
+):
+    """Update the current user's profile information.
+
+    This endpoint allows the authenticated user to update their profile details.
+
+    Args:
+        profile_update (UserProfileUpdate): The profile data to update.
+        db (Session): Database session dependency.
+        current_user (User): The authenticated user object.
+        notification_service (NotificationService): Notification service dependency.
+
+    Returns:
+        UserProfileUpdate: The updated user's profile data.
+
+    Raises:
+        HTTPException: If the user profile is not found or update fails.
+    """
+    logger.info(f"Updating profile for user ID: {current_user.id}")
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    try:
+        update_data = profile_update.model_dump(exclude_unset=True)
+
+        # Handle skills separately if provided
+        skills_data = update_data.pop("skills", None)
+        if skills_data is not None:
+            # Clear existing skills and add new ones
+            db.query(Skill).filter(Skill.user_id == current_user.id).delete()
+            for skill_item in skills_data:
+                skill = Skill(**skill_item, user_id=current_user.id)
+                db.add(skill)
+
+        for key, value in update_data.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+
+        # Calculate profile completeness after update
+        user.profile_completeness = calculate_profile_completeness(user)
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        profile_update_counter.inc()
+        log_audit(db, current_user.id, "PROFILE_UPDATE", f"User {current_user.id} updated profile")
+        try:
+            notification_service.send_notification(
+                user_id=current_user.id,
+                message="Your profile has been successfully updated.",
+                notification_type="profile_update",
+            )
+        except NotificationError as e:
+            logger.error(f"Failed to send profile update notification: {e}")
+
+        return user
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error during profile update for user {current_user.id}: {e}")
+        raise JobApplierException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to update profile due to a database error.",
+            details=str(e),
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"An unexpected error occurred during profile update for user {current_user.id}: {e}")
+        raise JobApplierException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="An unexpected error occurred during profile update.",
+            details=str(e),
+        )
+
+
+@router.post("/resume-upload", response_model=ResumeUploadResponse, dependencies=[Depends(limiter)])
+async def upload_resume(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    notification_service: NotificationService = Depends(get_notification_service),
+):
+    """Upload and parse a resume PDF, then update the user's profile.
+
+    This endpoint accepts a PDF resume, parses it to extract contact info, education,
+    experience, and skills, and then updates the authenticated user's profile with this data.
+    """
+    MAX_FILE_SIZE_MB = 5
+    MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are allowed."
+        )
+
+    # Check file size
+    file.file.seek(0, os.SEEK_END)  # Move to the end of the file
+    file_size = file.file.tell()  # Get the current position (which is the file size)
+    file.file.seek(0)  # Seek back to the beginning of the file
+
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds the limit of {MAX_FILE_SIZE_MB}MB."
+        )
+
+    upload_dir = "./temp_uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    file_location = os.path.join(upload_dir, file.filename)
+
+    try:
+        with open(file_location, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        resume_parser = ResumeParser()
+        parsed_data = resume_parser.parse_resume(file_location)
+
+        # Update user profile with parsed data
+        user = db.query(User).filter(User.id == current_user.id).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        # Update contact info
+        if parsed_data.contact_info.get("phone"): user.phone = parsed_data.contact_info["phone"]
+        if parsed_data.contact_info.get("linkedin"): user.linkedin_profile = parsed_data.contact_info["linkedin"]
+        if parsed_data.contact_info.get("github"): user.github_profile = parsed_data.contact_info["github"]
+        if parsed_data.contact_info.get("website"): user.personal_website = parsed_data.contact_info["website"]
+
+        # Update skills
+        if parsed_data.skills:
+            # Clear existing skills and add new ones from resume
+            db.query(Skill).filter(Skill.user_id == current_user.id).delete()
+            for skill_name in parsed_data.skills:
+                skill = Skill(name=skill_name, user_id=current_user.id)
+                db.add(skill)
+
+        # Update education
+        if parsed_data.education:
+            db.query(Education).filter(Education.user_id == current_user.id).delete()
+            for edu_data in parsed_data.education:
+                # Basic mapping, needs more robust date parsing and field mapping
+                education_entry = Education(
+                    user_id=current_user.id,
+                    degree=edu_data.get("degree"),
+                    university=edu_data.get("university"),
+                    field_of_study=edu_data.get("field_of_study", ""),
+                    start_date=datetime.now(), # Placeholder
+                    end_date=datetime.now() # Placeholder
+                )
+                db.add(education_entry)
+
+        # Update experience
+        if parsed_data.experience:
+            db.query(Experience).filter(Experience.user_id == current_user.id).delete()
+            for exp_data in parsed_data.experience:
+                # Basic mapping, needs more robust date parsing and field mapping
+                experience_entry = Experience(
+                    user_id=current_user.id,
+                    title=exp_data.get("title"),
+                    company=exp_data.get("company"),
+                    location=exp_data.get("location", ""),
+                    start_date=datetime.now(), # Placeholder
+                    end_date=datetime.now() # Placeholder
+                )
+                db.add(experience_entry)
+
+        # Calculate profile completeness
+        user.profile_completeness = calculate_profile_completeness(user)
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        file_upload_counter.inc()
+        log_audit(db, current_user.id, "RESUME_UPLOAD", f"User {current_user.id} uploaded resume")
+        try:
+            notification_service.send_notification(
+                user_id=current_user.id,
+                message="Your resume has been successfully uploaded and parsed.",
+                notification_type="resume_upload",
+            )
+        except NotificationError as e:
+            logger.error(f"Failed to send resume upload notification: {e}")
+
+        return ResumeUploadResponse(
+            message="Resume uploaded and profile updated successfully!",
+            profile_completeness=user.profile_completeness,
+            parsed_data=parsed_data
+        )
+
+    except JobApplierException as e:
+        logger.error(f"Resume parsing or profile update failed for user {current_user.id}: {e.message}")
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.error(f"Database error during resume upload for user {current_user.id}: {e}")
+        raise JobApplierException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="Failed to update profile after resume upload due to a database error.",
+            details=str(e),
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"An unexpected error occurred during resume upload for user {current_user.id}: {e}")
+        raise JobApplierException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            message="An unexpected error occurred during resume upload.",
+            details=str(e),
+        )
+    finally:
+        if os.path.exists(file_location):
+            os.remove(file_location)
+
+
+# Education Endpoints
 
 
 class UserProfileUpdate(BaseModel):
@@ -319,7 +724,8 @@ async def update_user_profile(
         raise JobApplierException(
             message="Failed to update profile due to a database error.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="DB_ERROR"
         )
     except Exception as e:
         db.rollback()
@@ -338,7 +744,8 @@ async def update_user_profile(
         raise JobApplierException(
             message="An unexpected error occurred while updating profile.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="UNKNOWN_ERROR"
         )
 
 
@@ -410,7 +817,8 @@ async def create_user_profile(
         raise JobApplierException(
             message="Failed to create/update profile due to a database error.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="DB_ERROR"
         )
     except Exception as e:
         db.rollback()
@@ -429,11 +837,12 @@ async def create_user_profile(
         raise JobApplierException(
             message="An unexpected error occurred while creating/updating profile.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="UNKNOWN_ERROR"
         )
 
 
-@router.post("/education", response_model=EducationResponse)
+@router.post("/education", response_model=EducationResponse, dependencies=[Depends(limiter)])
 async def create_education(
     education: EducationCreate,
     db: Session = Depends(get_db),
@@ -537,7 +946,7 @@ async def get_all_education(
         )
 
 
-@router.put("/education/{education_id}", response_model=EducationResponse)
+@router.put("/education/{education_id}", response_model=EducationResponse, dependencies=[Depends(limiter)])
 async def update_education(
     education_id: int,
     education: EducationUpdate,
@@ -606,7 +1015,7 @@ async def update_education(
         )
 
 
-@router.delete("/education/{education_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/education/{education_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(limiter)])
 async def delete_education(
     education_id: int,
     db: Session = Depends(get_db),
@@ -657,7 +1066,8 @@ async def delete_education(
         raise JobApplierException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to delete education entry due to a database error.",
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="DB_ERROR"
         )
     except Exception as e:
         db.rollback()
@@ -668,11 +1078,12 @@ async def delete_education(
         raise JobApplierException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="An unexpected error occurred while deleting education entry.",
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="UNKNOWN_ERROR"
         )
 
 
-@router.post("/experience", response_model=ExperienceResponse)
+@router.post("/experience", response_model=ExperienceResponse, dependencies=[Depends(limiter)])
 async def create_experience(
     experience: ExperienceCreate,
     db: Session = Depends(get_db),
@@ -712,7 +1123,8 @@ async def create_experience(
         raise JobApplierException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="Failed to create experience entry due to a database error.",
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="DB_ERROR"
         )
     except Exception as e:
         db.rollback()
@@ -723,27 +1135,10 @@ async def create_experience(
         raise JobApplierException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             message="An unexpected error occurred while creating experience entry.",
-            details={"error": str(e)}
+            details={"error": str(e)},
+            error_code="UNKNOWN_ERROR"
         )
-    except SQLAlchemyError as e:
-        db.rollback()
-        logger.error(
-            f"Database error creating experience entry for user ID: {current_user.id}: {e}",
-            exc_info=True,
-        )
-        raise JobApplierException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Database error creating experience entry: {e}", error_code="DB_ERROR"
-        )
-    except Exception as e:
-        logger.error(
-            f"Error creating experience entry for user ID: {current_user.id}: {e}",
-            exc_info=True,
-        )
-        raise JobApplierException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message=f"Error creating experience entry: {e}", error_code="UNKNOWN_ERROR"
-        )
+
 
 
 @router.get("/experience", response_model=List[ExperienceResponse])
@@ -798,7 +1193,7 @@ async def get_all_experience(
         )
 
 
-@router.put("/experience/{experience_id}", response_model=ExperienceResponse)
+@router.put("/experience/{experience_id}", response_model=ExperienceResponse, dependencies=[Depends(limiter)])
 async def update_experience(
     experience_id: int,
     experience: ExperienceUpdate,
@@ -873,7 +1268,7 @@ async def update_experience(
         )
 
 
-@router.delete("/experience/{experience_id}")
+@router.delete("/experience/{experience_id}", dependencies=[Depends(limiter)])
 async def delete_experience(
     experience_id: int,
     db: Session = Depends(get_db),
@@ -942,7 +1337,7 @@ async def delete_experience(
         )
 
 
-@router.post("/projects", response_model=ProjectResponse)
+@router.post("/projects", response_model=ProjectResponse, dependencies=[Depends(limiter)])
 async def create_project(
     project: ProjectCreate,
     db: Session = Depends(get_db),
@@ -1050,7 +1445,7 @@ async def get_all_projects(
         )
 
 
-@router.put("/projects/{project_id}", response_model=ProjectResponse)
+@router.put("/projects/{project_id}", response_model=ProjectResponse, dependencies=[Depends(limiter)])
 async def update_project(
     project_id: int,
     project: ProjectUpdate,
@@ -1121,7 +1516,7 @@ async def update_project(
         )
 
 
-@router.delete("/projects/{project_id}")
+@router.delete("/projects/{project_id}", dependencies=[Depends(limiter)])
 async def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
@@ -1188,7 +1583,7 @@ async def delete_project(
         )
 
 
-@router.post("/job_preferences", response_model=JobPreferenceResponse)
+@router.post("/job_preferences", response_model=JobPreferenceResponse, dependencies=[Depends(limiter)])
 async def create_job_preference(
     job_preference: JobPreferenceCreate,
     db: Session = Depends(get_db),
@@ -1322,7 +1717,7 @@ async def get_all_job_preferences(
 
 
 @router.put(
-    "/job_preferences/{job_preference_id}", response_model=JobPreferenceResponse
+    "/job_preferences/{job_preference_id}", response_model=JobPreferenceResponse, dependencies=[Depends(limiter)]
 )
 async def update_job_preference(
     job_preference_id: int,
@@ -1399,7 +1794,7 @@ async def update_job_preference(
         )
 
 
-@router.delete("/job_preferences/{job_preference_id}")
+@router.delete("/job_preferences/{job_preference_id}", dependencies=[Depends(limiter)])
 async def delete_job_preference(
     job_preference_id: int,
     db: Session = Depends(get_db),
@@ -1471,7 +1866,7 @@ async def delete_job_preference(
         )
 
 
-@router.post("/skills", response_model=SkillResponse)
+@router.post("/skills", response_model=SkillResponse, dependencies=[Depends(limiter)])
 async def create_skill(
     skill: SkillCreate,
     db: Session = Depends(get_db),

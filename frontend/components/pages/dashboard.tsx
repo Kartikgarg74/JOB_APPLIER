@@ -7,6 +7,8 @@ import { Progress } from "@/components/ui/progress"
 import { Search, Upload, Clock, TrendingUp, Target, CheckCircle, Building2, Calendar, BarChart3 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import React, { useState, useEffect } from "react";
+import { Metric, ProgressBar, Text as TremorText } from "@tremor/react";
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import useSWR from 'swr';
 import { supabase } from '@/lib/supabase';
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -63,16 +65,36 @@ const calculateJobMatchScore = (application: any) => {
 };
 
 // Helper to calculate ATS score (placeholder)
-const calculateAtsScore = (application: any) => {
-  // In a real application, this would involve more complex NLP or an external ATS API
-  // For now, let's return a random score to simulate variability
-  return Math.floor(Math.random() * (95 - 70 + 1)) + 70;
+const calculateAtsScore = async (jobDescription: string, resumeText: string) => {
+  try {
+    const response = await fetch('/api/calculate-ats-score', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ jobDescription, resumeText }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to calculate ATS score');
+    }
+
+    const data = await response.json();
+    return data.ats_score; // Assuming the API returns { ats_score: number, ... }
+  } catch (error) {
+    console.error('Error calculating ATS score:', error);
+    throw error; // Re-throw to be caught by the calling component
+  }
 };
 
 export function Dashboard() {
-  const { data: applications, error, isLoading } = useSWR('job_applications', fetcher);
+  const { data: applications, error, isLoading, mutate } = useSWR('job_applications', fetcher);
 
   const [loading, setLoading] = useState(true);
+  const [recalculatingAppId, setRecalculatingAppId] = useState<string | null>(null);
+  const [isCalculatingAts, setIsCalculatingAts] = useState(false);
+
   useEffect(() => {
     if (!isLoading) {
       setLoading(false);
@@ -96,7 +118,7 @@ export function Dashboard() {
     },
     {
       title: "ATS Average Score",
-      value: `${(applications.reduce((sum: number, app: any) => sum + calculateAtsScore(app), 0) / applications.length || 0).toFixed(0)}`,
+      value: `${(applications.reduce((sum: number, app: any) => sum + (app.ats_score || 0), 0) / applications.length || 0).toFixed(0)}`,
       change: "",
       icon: BarChart3,
       color: "text-purple-600",
@@ -110,6 +132,8 @@ export function Dashboard() {
     },
   ] : [];
 
+  const averageAtsScore = applications ? (applications.reduce((sum: number, app: any) => sum + (app.ats_score || 0), 0) / applications.length || 0) : 0;
+
   const recentApplications = applications ? applications.slice(0, 3).map((app: any) => ({
     company: app.company_name,
     position: app.job_title,
@@ -117,8 +141,11 @@ export function Dashboard() {
     status: app.status,
     logo: app.company_logo_url || "/placeholder.svg?height=40&width=40",
     jobMatchScore: calculateJobMatchScore(app),
-    atsScore: calculateAtsScore(app),
+    atsScore: app.ats_score || 0, // Use the stored ATS score
     coverLetterPreview: app.cover_letter_content ? app.cover_letter_content.substring(0, 50) + '...' : 'No cover letter',
+    id: app.id,
+    job_description: app.job_description, // Include job_description
+    resume_content: app.resume_content,   // Include resume_content
   })) : [];
 
   // Analytics event hooks
@@ -165,8 +192,40 @@ export function Dashboard() {
       <div className="flex flex-col min-h-screen">
       <main role="main" aria-label="Dashboard" tabIndex={-1} className="space-y-8 px-2 sm:px-4 md:px-0 focus:outline-none">
         {/* Welcome Section */}
-        <div className="gradient-bg rounded-2xl p-4 sm:p-8 text-white">
+    <div className="gradient-bg rounded-2xl p-4 sm:p-8 text-white">
+      <Button
+        onClick={async () => {
+          setIsCalculatingAts(true);
+          // Example usage for testing the ATS score calculation
+          const dummyJobDesc = "We are looking for a Python developer with experience in FastAPI and machine learning.";
+          const dummyResume = "I am a software engineer with 5 years of experience in Python, including FastAPI. I have worked on several machine learning projects.";
+          try {
+            const score = await calculateAtsScore(dummyJobDesc, dummyResume);
+            console.log('Calculated ATS Score:', score);
+            alert(`Calculated ATS Score: ${score}`);
+          } catch (e: any) {
+            alert(`Error calculating ATS score: ${e.message}`);
+          } finally {
+            setIsCalculatingAts(false);
+          }
+        }}
+        disabled={isCalculatingAts}
+      >
+        {isCalculatingAts ? (
+          <span className="flex items-center">
+            <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
+            Calculating...
+          </span>
+        ) : (
+          "Test ATS Score Calculation"
+        )}
+      </Button>
           <div className="max-w-2xl">
+            <div className="mt-4">
+              <TremorText>Average ATS Score</TremorText>
+              <Metric>{averageAtsScore.toFixed(2)}%</Metric>
+              <ProgressBar value={averageAtsScore} className="mt-2" />
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">Good morning, Alex! 👋</h1>
             <p className="text-white/90 text-base sm:text-lg mb-6">
               Ready to supercharge your job search? You have 3 new job matches waiting for you.
@@ -232,6 +291,39 @@ export function Dashboard() {
                       <span className="font-medium">ATS Score: {app.atsScore}%</span>
                       <Progress value={app.atsScore} className="w-20 h-2" />
                     </div>
+                     <Button
+                       variant="link"
+                       size="sm"
+                       className="text-blue-500 hover:underline text-xs mt-1 p-0 h-auto"
+                       onClick={async () => {
+                         setRecalculatingAppId(app.id);
+                         try {
+                           const newAtsScore = await calculateAtsScore((app as any).job_description, (app as any).resume_content);
+                           // Update the Supabase record with the new ATS score
+                           const { error: updateError } = await supabase
+                             .from('job_applications')
+                             .update({ ats_score: newAtsScore })
+                             .eq('id', app.id);
+
+                           if (updateError) throw updateError;
+                           mutate(); // Revalidate SWR cache to show updated score
+                         } catch (e: any) {
+                           alert(`Error updating ATS score: ${e.message}`);
+                         } finally {
+                           setRecalculatingAppId(null);
+                         }
+                       }}
+                       disabled={recalculatingAppId === app.id}
+                     >
+                       {recalculatingAppId === app.id ? (
+                         <span className="flex items-center">
+                           <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
+                           Recalculating...
+                         </span>
+                       ) : (
+                         "Recalculate ATS Score"
+                       )}
+                     </Button>
                   </div>
                   <div className="w-full text-sm text-muted-foreground mt-2 sm:mt-0">
                     <p className="font-medium">Cover Letter Preview:</p>

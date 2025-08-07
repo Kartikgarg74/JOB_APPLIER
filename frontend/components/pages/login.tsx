@@ -12,8 +12,10 @@ import { Zap, Mail, Lock, Eye, EyeOff, Github, Chrome, AlertCircle } from "lucid
 import { useTheme } from "next-themes"
 import { Moon, Sun } from "lucide-react"
 import { createBrowserClient } from '@supabase/ssr'
+import { useRouter } from 'next/navigation'
 
 export function LoginPage() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
@@ -41,7 +43,7 @@ export function LoginPage() {
       setError(error.message)
     } else {
       // Handle successful login, e.g., redirect to dashboard
-      window.location.href = "/dashboard"
+      router.push("/dashboard")
     }
     setIsLoading(false)
   }
@@ -59,8 +61,10 @@ export function LoginPage() {
     if (error) {
       setError(error.message)
       setIsLoading(false)
+    } else {
+      // Google login will redirect, so no need to set isLoading(false) here on success
+      router.push("/dashboard")
     }
-    // Google login will redirect, so no need to set isLoading(false) here on success
   }
 
   return (

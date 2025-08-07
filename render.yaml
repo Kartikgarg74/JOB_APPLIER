@@ -1,0 +1,101 @@
+services:
+  - type: web
+    name: user-service
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {"name": "job-applier-db", "property": "connectionString"}
+      - key: REDIS_URL
+        fromService: {"name": "job-applier-redis", "property": "connectionString"}
+
+  - type: web
+    name: ats-service
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {"name": "job-applier-db", "property": "connectionString"}
+      - key: REDIS_URL
+        fromService: {"name": "job-applier-redis", "property": "connectionString"}
+      - key: USER_SERVICE_URL
+        fromService: {"name": "user-service", "property": "host"}
+
+  - type: web
+    name: job-applier-service
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {"name": "job-applier-db", "property": "connectionString"}
+      - key: REDIS_URL
+        fromService: {"name": "job-applier-redis", "property": "connectionString"}
+      - key: USER_SERVICE_URL
+        fromService: {"name": "user-service", "property": "host"}
+      - key: ATS_SERVICE_URL
+        fromService: {"name": "ats-service", "property": "host"}
+
+  - type: web
+    name: agent-orchestration-service
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {"name": "job-applier-db", "property": "connectionString"}
+      - key: REDIS_URL
+        fromService: {"name": "job-applier-redis", "property": "connectionString"}
+      - key: USER_SERVICE_URL
+        fromService: {"name": "user-service", "property": "host"}
+      - key: JOB_APPLIER_SERVICE_URL
+        fromService: {"name": "job-applier-service", "property": "host"}
+
+  - type: worker
+    name: job-applier-agent
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A src.celery_app worker --loglevel=info"
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase: {"name": "job-applier-db", "property": "connectionString"}
+      - key: REDIS_URL
+        fromService: {"name": "job-applier-redis", "property": "connectionString"}
+      - key: USER_SERVICE_URL
+        fromService: {"name": "user-service", "property": "host"}
+      - key: JOB_APPLIER_SERVICE_URL
+        fromService: {"name": "job-applier-service", "property": "host"}
+
+  - type: redis
+    name: job-applier-redis
+    ipAllowList:
+      - source: all
+        description: Allow all inbound connections
+
+  - type: web
+    name: frontend
+    env: node
+    buildCommand: "npm install && npm run build"
+    startCommand: "npm start"
+    autoDeploy: true
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        fromService: {"name": "job-applier-service", "property": "host"}
+
+# Database (Supabase) - Placeholder for connection details
+# You would typically configure Supabase directly in Render or manage its connection string as a secret.
+# For migrations, you might have a separate service or a pre-deploy hook.
+# databases:
+#   - name: job-applier-db
+#     plan: free

@@ -41,8 +41,15 @@ export const API_CONFIG = {
 };
 
 // Helper function to get full URL for a service endpoint
+if (process.env.NODE_ENV === 'development') {
+  console.log('NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL:', process.env.NEXT_PUBLIC_AGENT_ORCHESTRATION_SERVICE_URL);
+}
+
 export function getServiceUrl(service: keyof typeof API_CONFIG, endpoint: string): string {
   const baseUrl = API_CONFIG[service];
+  if (process.env.NODE_ENV === 'development') {
+  console.log(`getServiceUrl: service=${service}, baseUrl=${baseUrl}, endpoint=${endpoint}`);
+}
   return `${baseUrl}${endpoint}`;
 }
 

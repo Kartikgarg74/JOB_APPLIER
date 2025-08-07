@@ -6,15 +6,19 @@ export interface Application {
   id: number;
   company: string;
   position: string;
-  status: 'Applied' | 'Interview' | 'Rejected' | 'Offer' | 'On Hold';
+  status: 'applied' | 'reviewed' | 'interview' | 'offer' | 'rejected';
   appliedDate: string; // ISO string
   salary: string;
   location: string;
   notes?: string;
   jobUrl?: string | null;
-  // Fields below are not yet supported by the new API but kept for UI compatibility
   logo?: string;
   atsScore?: number;
+  jobMatchScore?: number;
+  responseTime?: string; // e.g., "5 days"
+  interviewDate?: string; // ISO string
+  offerDetails?: string;
+  rejectionReason?: string;
 }
 
 export interface ApplicationSubmissionRequest {
@@ -50,6 +54,10 @@ export interface ApiApplication {
     salary: string | null;
     url: string | null;
   };
+  response_time?: string;
+  interview_date?: string;
+  offer_details?: string;
+  rejection_reason?: string;
 }
 
 // Data required for creating a new application
@@ -81,6 +89,11 @@ function mapApiToUiApplication(apiApp: ApiApplication): Application {
     notes: apiApp.cover_letter || undefined,
     jobUrl: apiApp.job.url,
     atsScore: 0, // Placeholder
+    jobMatchScore: 0, // Placeholder
+    responseTime: apiApp.response_time,
+    interviewDate: apiApp.interview_date,
+    offerDetails: apiApp.offer_details,
+    rejectionReason: apiApp.rejection_reason,
   };
 }
 

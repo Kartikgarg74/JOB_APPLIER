@@ -2,11 +2,12 @@ from typing import Any, Optional
 
 class JobApplierException(Exception):
     """Custom exception for Job Applier Agent application-specific errors."""
-    def __init__(self, message: str, status_code: int = 500, details: Optional[dict[Any, Any]] = None):
+    def __init__(self, message: str, status_code: int = 500, details: Optional[dict[Any, Any]] = None, error_code: Optional[str] = None):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
         self.details = details or {}
+        self.error_code = error_code
 
 class AgentOrchestrationError(JobApplierException):
     """Custom exception for errors during agent orchestration."""

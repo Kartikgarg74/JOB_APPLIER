@@ -9,6 +9,7 @@ from packages.errors.custom_exceptions import JobApplierException
 from passlib.context import CryptContext
 from apps.job_applier_agent.src.auth.auth_api import get_current_user
 from apps.job_applier_agent.src.auth.schemas import UserResponse, UserUpdate
+from apps.user_service.src.main import limiter
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -22,7 +23,7 @@ def get_db():
         db.close()
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get("/users/me", response_model=UserResponse, dependencies=[Depends(limiter)])
 async def read_users_me(current_user: User = Depends(get_current_user)):
     """Get current user's information.
 
@@ -55,7 +56,7 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 
 
 
-@router.put("/users/me", response_model=UserResponse)
+@router.put("/users/me", response_model=UserResponse, dependencies=[Depends(limiter)])
 async def update_users_me(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
@@ -90,7 +91,7 @@ async def update_users_me(
         )
 
 
-@router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(limiter)])
 async def delete_users_me(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
@@ -120,7 +121,7 @@ async def delete_users_me(
 
 
 # Admin endpoint to get all users (for demonstration, needs proper authorization)
-@router.get("/users/all", response_model=list[UserResponse])
+@router.get("/users/all", response_model=list[UserResponse], dependencies=[Depends(limiter)])
 async def get_all_users(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
