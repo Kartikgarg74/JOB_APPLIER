@@ -48,8 +48,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-
-app = FastAPI(
     title="User Service API",
     description="API for managing user authentication, profiles, and related data.",
     version="1.0.0",

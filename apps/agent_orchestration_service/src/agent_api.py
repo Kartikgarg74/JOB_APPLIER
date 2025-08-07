@@ -273,9 +273,9 @@ async def generate_cover_letter_endpoint(
         """
         
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(2), retry=retry_if_exception_type(google.api_core.exceptions.GoogleAPIError))
-            def generate_content_with_retry(model_obj, prompt_str):
-                return model_obj.generate_content(prompt_str)
-            response = generate_content_with_retry(model, prompt)
+        def generate_content_with_retry(model_obj, prompt_str):
+            return model_obj.generate_content(prompt_str)
+        response = generate_content_with_retry(model, prompt)
         
         # Assuming the response is directly the JSON string
         generated_content = response.text

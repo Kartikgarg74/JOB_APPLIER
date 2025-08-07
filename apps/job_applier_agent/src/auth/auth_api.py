@@ -457,10 +457,12 @@ async def google_auth_callback(data: GoogleAuthCallback, db: Session = Depends(g
 
         try:
             idinfo = verify_google_token_with_retry(data.id_token, requests.Request(), GOOGLE_CLIENT_ID)   # Extract user information
-        google_id = idinfo["sub"]
-        email = idinfo["email"]
-        name = idinfo.get("name", email.split("@")[0])
-        image = idinfo.get("picture")
+            google_id = idinfo["sub"]
+            email = idinfo["email"]
+            name = idinfo.get("name", email.split("@")[0])
+            image = idinfo.get("picture")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Google token")
 
         user = db.query(User).filter(User.google_id == google_id).first()
         if not user:
