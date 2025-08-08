@@ -54,7 +54,8 @@ nltk==3.8.1
 # Additional dependencies for compatibility
 amqp==5.3.1
 billiard==4.2.1
-click==8.1.7
+click==8.2.1
+python-jose==3.3.0
 click-didyoumean==0.3.0
 click-plugins==1.1.1
 click-repl==0.3.0

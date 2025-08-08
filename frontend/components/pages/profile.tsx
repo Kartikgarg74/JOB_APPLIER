@@ -311,7 +311,7 @@ export function ProfilePage() {
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-24" />
-  
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Skeleton className="h-96 w-full" />
           <Skeleton className="h-96 w-full" />
@@ -402,9 +402,8 @@ export function ProfilePage() {
                         type="text"
                         {...field}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -418,9 +417,8 @@ export function ProfilePage() {
                         type="text"
                         {...field}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -434,9 +432,8 @@ export function ProfilePage() {
                         type="url"
                         {...field}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.portfolio_url && <p className="text-red-500 text-sm">{errors.portfolio_url.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -450,9 +447,8 @@ export function ProfilePage() {
                         type="url"
                         {...field}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.personal_website && <p className="text-red-500 text-sm">{errors.personal_website.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -466,9 +462,8 @@ export function ProfilePage() {
                         type="url"
                         {...field}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.linkedin_profile && <p className="text-red-500 text-sm">{errors.linkedin_profile.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -482,9 +477,8 @@ export function ProfilePage() {
                         type="url"
                         {...field}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.github_profile && <p className="text-red-500 text-sm">{errors.github_profile.message}</p>}
                 </div>
                 <div className="space-y-2">
@@ -499,9 +493,8 @@ export function ProfilePage() {
                         {...field}
                         onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                         disabled={!editMode || saving}
-
+                      />
                     )}
-                  />
                   {errors.years_of_experience && <p className="text-red-500 text-sm">{errors.years_of_experience.message}</p>}
                 </div>
               </div>
@@ -541,10 +534,8 @@ export function ProfilePage() {
                               disabled={!editMode}
                               placeholder="Senior Software Engineer"
                             />
-                          )}
+                          )
                       />
-                      />
-                        />
                       {errors.experience?.[index]?.title && <p className="text-red-500 text-sm">{errors.experience[index].title.message}</p>}
                       </div>
                       <div className="space-y-2">
